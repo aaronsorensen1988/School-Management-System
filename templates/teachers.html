@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teachers</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Teachers</h2>
+
+    <table style="width:100%; text-align:left; margin-top:20px;">
+        <tr>
+            <th>Name</th>
+            <th>Subject</th>
+            <th>Profile</th>
+        </tr>
+
+        {% for t in teachers %}
+        <tr>
+            <td>{{ t.name }}</td>
+            <td>{{ t.subject }}</td>
+            <td>
+                <button onclick="window.location.href='/ui/teacher/{{ t.id }}'">
+                    View Profile
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <button onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</div>
+
+</body>
+</html>

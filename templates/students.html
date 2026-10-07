@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Students</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Students</h2>
+
+    <table style="width:100%; text-align:left; margin-top:20px;">
+        <tr>
+            <th>Name</th>
+            <th>Grade</th>
+            <th>Profile</th>
+        </tr>
+
+        {% for s in students %}
+        <tr>
+            <td>{{ s.name }}</td>
+            <td>{{ s.grade }}</td>
+            <td>
+                <button onclick="window.location.href='/ui/student/{{ s.id }}'">
+                    View Profile
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <button onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</div>
+
+</body>
+</html>
