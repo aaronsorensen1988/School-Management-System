@@ -4,6 +4,8 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from utils.security import verify_password
+
 
 # ---------------------------------------------------------
 # Demo student data
@@ -55,14 +57,18 @@ def login_page(request: Request):
 
 @app.post("/login")
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    if username == "admin" and password == "password123":
+    stored_user = {
+        "username": "admin",
+        "hashed_password": "$2b$12$FJN3VZMycl1zSuvBXw9CbeagX9kP3qU6ZLEyxjHMPGpgqu8gnUtZW"
+    }
+
+    if username == stored_user["username"] and verify_password(password, stored_user["hashed_password"]):
         return RedirectResponse("/dashboard", status_code=302)
-    else:
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {"request": request, "error": "Invalid username or password"}
-        )
+
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": "Invalid username or password"}
+    )
 
 # ---------------------------------------------------------
 # DASHBOARD
