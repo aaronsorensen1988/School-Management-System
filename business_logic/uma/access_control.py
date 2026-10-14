@@ -1,0 +1,37 @@
+class AccessControl:
+    """Defines role-based access rules for protected school records."""
+
+    @staticmethod
+    def can_view_student_record(
+        role,
+        requester_id,
+        student_id,
+        assigned_student_ids=None,
+        child_ids=None
+    ):
+        """
+        Determines whether a user may view a student's protected record.
+
+        Admins may view any student record.
+        Teachers may view records for assigned students.
+        Students may view only their own record.
+        Parents may view only their own children's records.
+        """
+
+
+        assigned_student_ids = assigned_student_ids or []
+        child_ids = child_ids or []
+
+        if role == "Admin":
+            return True
+        
+        if role == "Teacher":
+            return student_id in assigned_student_ids
+        
+        if role == "Student":
+            return requester_id == student_id
+
+        if role == "Parent":
+            return student_id in child_ids
+        
+        return False
