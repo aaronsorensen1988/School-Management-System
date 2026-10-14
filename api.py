@@ -4,6 +4,16 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from utils.security import verify_password
+import logging
+
+# Failed login attempt logging
+logging.basicConfig(
+    filename="login_attempts.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 # ---------------------------------------------------------
 # Demo student data
@@ -53,17 +63,25 @@ uma = UmaService()
 def login_page(request: Request):
     return templates.TemplateResponse(request, "login.html", {"request": request})
 
+
 @app.post("/login")
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    if username == "admin" and password == "password123":
-        return RedirectResponse("/dashboard", status_code=302)
-    else:
-        return templates.TemplateResponse(
-            request,
-            "login.html",
-            {"request": request, "error": "Invalid username or password"}
-        )
+    stored_user = {
+        "username": "admin",
+        "hashed_password": "$2b$12$FJN3VZMycl1zSuvBXw9CbeagX9kP3qU6ZLEyxjHMPGpgqu8gnUtZW"
+    }
 
+    # Successful login
+    if username == stored_user["username"] and verify_password(password, stored_user["hashed_password"]):
+        logging.info(f"Successful login for user: {username}")
+        return RedirectResponse("/dashboard", status_code=302)
+
+    # Failed login
+    logging.warning(f"Failed login attempt for username: {username}")
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": "Invalid username or password"}
+    )
 # ---------------------------------------------------------
 # DASHBOARD
 # ---------------------------------------------------------
