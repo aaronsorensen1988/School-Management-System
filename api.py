@@ -79,6 +79,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     # Failed login
     logging.warning(f"Failed login attempt for username: {username}")
     return templates.TemplateResponse(
+        request,
         "login.html",
         {"request": request, "error": "Invalid username or password"}
     )
