@@ -63,7 +63,7 @@ class Section(Base):
     __table_args__ = (
         # same room can't be double booked at the same time
         UniqueConstraint("room", "day_of_week", "start_time", name="uq_room_slot"),
-        CheckConstraint("capacity > 0", name="ck_capacity_positive"),
+        CheckConstraint("capacity > 0 AND capacity <= 20", name="ck_capacity_range"),
         CheckConstraint("end_time > start_time", name="ck_end_after_start"),
     )
 
