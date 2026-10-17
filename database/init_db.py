@@ -1,6 +1,7 @@
 from database.database import Base, engine, SessionLocal
 from database.models import Role
 from database import models
+from database import scheduling  # noqa: F401  needs importing or create_all skips it
 
 
 def seed_roles():
