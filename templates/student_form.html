@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Student</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body { height: auto; min-height: 100vh; padding: 30px 0; }
+        .login-container { width: 420px; text-align: left; }
+        .login-container h2 { text-align: center; }
+        label { display: block; font-weight: bold; margin-top: 12px; }
+        input[type="date"], input[type="email"], select, textarea {
+            width: 100%; padding: 12px; margin: 6px 0; border-radius: 5px;
+            border: 1px solid #ccc; box-sizing: border-box; font-family: inherit;
+        }
+        .field-error { color: red; font-size: 0.9em; margin: 2px 0 6px; }
+        .secondary { background-color: #777; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Add Student</h2>
+
+    {% if errors %}
+    <p class="error">Please fix the highlighted fields below.</p>
+    {% endif %}
+
+    <form method="post" action="/students/new" novalidate>
+        <label for="student_number">Student ID</label>
+        <input type="text" id="student_number" name="student_number" value="{{ form.student_number or '' }}" placeholder="e.g. S10045">
+        {% if errors.student_number %}<p class="field-error">{{ errors.student_number }}</p>{% endif %}
+
+        <label for="first_name">First name</label>
+        <input type="text" id="first_name" name="first_name" value="{{ form.first_name or '' }}">
+        {% if errors.first_name %}<p class="field-error">{{ errors.first_name }}</p>{% endif %}
+
+        <label for="last_name">Last name</label>
+        <input type="text" id="last_name" name="last_name" value="{{ form.last_name or '' }}">
+        {% if errors.last_name %}<p class="field-error">{{ errors.last_name }}</p>{% endif %}
+
+        <label for="date_of_birth">Date of birth</label>
+        <input type="date" id="date_of_birth" name="date_of_birth" value="{{ form.date_of_birth or '' }}">
+        {% if errors.date_of_birth %}<p class="field-error">{{ errors.date_of_birth }}</p>{% endif %}
+
+        <label for="grade_level">Grade level</label>
+        <select id="grade_level" name="grade_level">
+            <option value="">Select a grade</option>
+            {% for g in range(0, 13) %}
+            <option value="{{ g }}" {% if (form.grade_level|string) == (g|string) %}selected{% endif %}>
+                {{ 'Kindergarten' if g == 0 else 'Grade ' ~ g }}
+            </option>
+            {% endfor %}
+        </select>
+        {% if errors.grade_level %}<p class="field-error">{{ errors.grade_level }}</p>{% endif %}
+
+        <label for="home_address">Home address</label>
+        <textarea id="home_address" name="home_address" rows="2">{{ form.home_address or '' }}</textarea>
+        {% if errors.home_address %}<p class="field-error">{{ errors.home_address }}</p>{% endif %}
+
+        <label for="guardian_name">Parent/guardian name</label>
+        <input type="text" id="guardian_name" name="guardian_name" value="{{ form.guardian_name or '' }}">
+        {% if errors.guardian_name %}<p class="field-error">{{ errors.guardian_name }}</p>{% endif %}
+
+        <label for="guardian_email">Parent/guardian email</label>
+        <input type="email" id="guardian_email" name="guardian_email" value="{{ form.guardian_email or '' }}">
+        {% if errors.guardian_email %}<p class="field-error">{{ errors.guardian_email }}</p>{% endif %}
+
+        <button type="submit">Save Student</button>
+    </form>
+
+    <button class="secondary" onclick="window.location.href='/students'">Cancel</button>
+</div>
+
+</body>
+</html>

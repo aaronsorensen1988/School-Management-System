@@ -32,6 +32,9 @@ def seed_roles():
 
 
 def init_db():
+    # Student profile table (SIEM-004). Imported here so create_all sees it.
+    from database import students  # noqa: F401
+
     Base.metadata.create_all(bind=engine)
     seed_roles()
 
