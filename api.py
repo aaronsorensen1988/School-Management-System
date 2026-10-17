@@ -1,10 +1,19 @@
 print(">>> RUNNING CORRECT API.PY <<<")
 
-from fastapi import FastAPI, Request, Form
+# FastAPI core
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+
+# Database + ORM
+from sqlalchemy.orm import Session
+from database.database import get_db
+
+# Security
 from utils.security import verify_password
+
+# Logging
 import logging
 
 # Failed login attempt logging
@@ -13,7 +22,6 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
 
 # ---------------------------------------------------------
 # Demo student data
@@ -35,6 +43,7 @@ teachers = [
 
 from business_logic.uma.uma_service import UmaService
 from business_logic.siem.student_service import StudentService
+from business_logic.amg.scheduling_service import scheduling_service, CapacityLimitError
 
 # ---------------------------------------------------------
 # Create FastAPI app FIRST
@@ -85,6 +94,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
         "login.html",
         {"request": request, "error": "Invalid username or password"}
     )
+
 # ---------------------------------------------------------
 # DASHBOARD
 # ---------------------------------------------------------
@@ -102,6 +112,23 @@ def students_page(request: Request):
         "students.html",
         {"request": request, "students": student_service.list_students()}
     )
+
+# ---------------------------------------------------------
+# COURSE SCHEDULING ENROLLMENT (AMG-007 / T1-024)
+# ---------------------------------------------------------
+@app.post("/sections/{section_id}/enroll")
+def enroll_student(
+    section_id: int,
+    student_id: int = Query(..., description="ID of the student to enroll"),
+    db: Session = Depends(get_db)
+):
+    try:
+        enrollment = scheduling_service.enroll_student(db, section_id, student_id)
+        return {"message": "Enrollment successful", "enrollment_id": enrollment.id}
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (CapacityLimitError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # ---------------------------------------------------------
 # ADD STUDENT (SIEM-004: T1-016 form, T1-018 validation)
