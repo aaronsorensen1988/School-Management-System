@@ -3,3 +3,11 @@ __pycache__/
 .venv/
 .vs/
 *.db
+
+# Encryption keys and local settings. A key committed here is a key
+# everyone with repo access has, which makes the encryption pointless.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
