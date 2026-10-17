@@ -6,11 +6,12 @@
 </head>
 <body>
 
-<div class="login-container">
+<div class="login-container" style="width:520px;">
     <h2>Students</h2>
 
     <table style="width:100%; text-align:left; margin-top:20px;">
         <tr>
+            <th>Student ID</th>
             <th>Name</th>
             <th>Grade</th>
             <th>Profile</th>
@@ -18,6 +19,7 @@
 
         {% for s in students %}
         <tr>
+            <td>{{ s.student_number }}</td>
             <td>{{ s.name }}</td>
             <td>{{ s.grade }}</td>
             <td>
@@ -26,8 +28,15 @@
                 </button>
             </td>
         </tr>
+        {% else %}
+        <tr>
+            <td colspan="4">No students yet. Click "Add Student" to enroll the first one.</td>
+        </tr>
         {% endfor %}
     </table>
+
+    <br>
+    <button onclick="window.location.href='/students/new'">Add Student</button>
 
     <br>
     <button onclick="window.location.href='/dashboard'">Back to Dashboard</button>

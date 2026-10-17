@@ -34,6 +34,7 @@ teachers = [
 ]
 
 from business_logic.uma.uma_service import UmaService
+from business_logic.siem.student_service import StudentService
 
 # ---------------------------------------------------------
 # Create FastAPI app FIRST
@@ -55,6 +56,7 @@ templates.env.cache = None   # Fixes Jinja2 caching bug
 # Business logic service
 # ---------------------------------------------------------
 uma = UmaService()
+student_service = StudentService()
 
 # ---------------------------------------------------------
 # LOGIN ROUTES
@@ -98,8 +100,36 @@ def students_page(request: Request):
     return templates.TemplateResponse(
         request,
         "students.html",
-        {"request": request, "students": students}
+        {"request": request, "students": student_service.list_students()}
     )
+
+# ---------------------------------------------------------
+# ADD STUDENT (SIEM-004: T1-016 form, T1-018 validation)
+# ---------------------------------------------------------
+@app.get("/students/new", response_class=HTMLResponse)
+def new_student_form(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "student_form.html",
+        {"request": request, "form": {}, "errors": {}}
+    )
+
+
+@app.post("/students/new", response_class=HTMLResponse)
+async def create_student(request: Request):
+    form = dict(await request.form())
+    student_id, errors = student_service.create_student(form)
+
+    # Show the form again with the user's entries and error messages.
+    if errors:
+        return templates.TemplateResponse(
+            request,
+            "student_form.html",
+            {"request": request, "form": form, "errors": errors},
+            status_code=400
+        )
+
+    return RedirectResponse(f"/ui/student/{student_id}", status_code=303)
 
 # ---------------------------------------------------------
 # TEACHERS PAGE
@@ -136,12 +166,10 @@ def home(request: Request):
 # ---------------------------------------------------------
 @app.get("/ui/student/{student_id}", response_class=HTMLResponse)
 def student_ui(request: Request, student_id: str):
-    profile = uma.get_user_profile(student_id)
+    student = student_service.get_student(student_id)
     return templates.TemplateResponse(
         request,
         "student_profile.html",
-        {
-            "request": request,
-            "profile": profile
-        }
+        {"request": request, "student": student},
+        status_code=200 if student else 404
     )

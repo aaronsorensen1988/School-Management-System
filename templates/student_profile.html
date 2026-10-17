@@ -1,10 +1,31 @@
-@app.get("/ui/student/{student_id}", response_class=HTMLResponse)
-def student_ui(request: Request, student_id: str):
-    profile = uma.get_user_profile(student_id)
-    return templates.TemplateResponse(
-        request,
-        "student_profile.html",
-        {
-            "profile": profile
-        }
-    )
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Profile</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .login-container { width: 420px; text-align: left; }
+        .login-container h2 { text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    {% if student %}
+    <h2>{{ student.name }}</h2>
+    <p><strong>Student ID:</strong> {{ student.student_number }}</p>
+    <p><strong>Grade:</strong> {{ student.grade }}</p>
+    <p><strong>Date of birth:</strong> {{ student.date_of_birth }}</p>
+    <p><strong>Home address:</strong> {{ student.home_address }}</p>
+    <p><strong>Parent/guardian:</strong> {{ student.guardian_name }}</p>
+    <p><strong>Parent/guardian email:</strong> {{ student.guardian_email }}</p>
+    {% else %}
+    <h2>Student not found</h2>
+    <p>No student matches that ID.</p>
+    {% endif %}
+
+    <button onclick="window.location.href='/students'">Back to Students</button>
+</div>
+
+</body>
+</html>
