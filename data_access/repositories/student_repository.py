@@ -103,12 +103,12 @@ class StudentRepository:
         student = Student(**fields)
         self.db.add(student)
         self.db.flush()
-        self._log(actor, CREATE, ALLOWED, student.id)
+        self._log(actor, CREATE, ALLOWED, student.id, commit=False)
         return student
 
     # -- helpers -------------------------------------------------------
 
-    def _log(self, actor, action, outcome, resource_id=None, detail=None):
+    def _log(self, actor, action, outcome, resource_id=None, detail=None, commit=True):
         """Record and commit straight away.
 
         Has to commit, not flush. A denial ends in an exception and a
@@ -116,7 +116,8 @@ class StudentRepository:
         flushed row would be thrown away either way.
         """
         record(self.db, actor, action, "student", resource_id, outcome, detail)
-        self.db.commit()
+        if commit:
+            self.db.commit()
 
     def _may_view(self, actor: Actor, student: Student) -> bool:
         # Sean's policy compares requester_id to student_id. a logged in
