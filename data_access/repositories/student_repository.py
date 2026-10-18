@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from business_logic.uma.access_control import AccessControl
+from data_access.repositories.audit_repository import record
+from database.audit import ALLOWED, CREATE, DENIED, LIST, VIEW
 from database.students import Student
 
 # Fields that only staff should see. A student looking at their own record
@@ -60,9 +62,12 @@ class StudentRepository:
             raise LookupError(f"no student with id {student_id}")
 
         if not self._may_view(actor, student):
+            self._log(actor, VIEW, DENIED, student_id)
             raise AccessDenied(
                 f"{actor.role or 'anonymous'} user {actor.user_id} may not view student {student_id}"
             )
+
+        self._log(actor, VIEW, ALLOWED, student_id)
         return student
 
     def list_visible(self, actor: Actor) -> list[Student]:
@@ -73,6 +78,7 @@ class StudentRepository:
         query in Sprint 2.
         """
         if actor.role is None:
+            self._log(actor, LIST, DENIED)
             return []
 
         students = (
@@ -80,22 +86,37 @@ class StudentRepository:
             .order_by(Student.last_name, Student.first_name)
             .all()
         )
-        return [s for s in students if self._may_view(actor, s)]
+        visible = [s for s in students if self._may_view(actor, s)]
+        self._log(actor, LIST, ALLOWED,
+                  detail=f"{len(visible)} of {len(students)} rows")
+        return visible
 
     # -- writes --------------------------------------------------------
 
     def create(self, actor: Actor, **fields) -> Student:
         """Add a student. Admins only."""
         if not AccessControl.can_manage_students(actor.role):
+            self._log(actor, CREATE, DENIED)
             raise AccessDenied(
                 f"{actor.role or 'anonymous'} user {actor.user_id} may not create students"
             )
         student = Student(**fields)
         self.db.add(student)
         self.db.flush()
+        self._log(actor, CREATE, ALLOWED, student.id)
         return student
 
     # -- helpers -------------------------------------------------------
+
+    def _log(self, actor, action, outcome, resource_id=None, detail=None):
+        """Record and commit straight away.
+
+        Has to commit, not flush. A denial ends in an exception and a
+        rolled back request, and a plain read never commits at all, so a
+        flushed row would be thrown away either way.
+        """
+        record(self.db, actor, action, "student", resource_id, outcome, detail)
+        self.db.commit()
 
     def _may_view(self, actor: Actor, student: Student) -> bool:
         # Sean's policy compares requester_id to student_id. a logged in
