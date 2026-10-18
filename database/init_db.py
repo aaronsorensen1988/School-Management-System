@@ -79,8 +79,9 @@ def seed_admin():
 
 
 def init_db():
-    # Student profile table (SIEM-004). Imported here so create_all sees it.
-    from database import students  # noqa: F401
+    # Imported here so create_all sees them.
+    from database import students  # noqa: F401  SIEM-004
+    from database import audit     # noqa: F401  T1-014
 
     Base.metadata.create_all(bind=engine)
     seed_roles()
