@@ -1,5 +1,6 @@
 """Course scheduling business logic for AMG-007 / T1-024."""
 from sqlalchemy.orm import Session
+from sqlalchemy import update
 from database.scheduling import Section, Enrollment
 from database.models import User, Role
 
@@ -11,6 +12,14 @@ class CapacityLimitError(ValueError):
 
 class SchedulingService:
     def enroll_student(self, db: Session, section_id: int, student_id: int) -> Enrollment:
+        # Lock enrollment changes before checking capacity so two requests
+        # cannot both take the final available seat.
+        db.execute(
+            update(Section)
+            .where(Section.id == section_id)
+            .values(capacity=Section.capacity)
+        )
+        
         # 1. Verify section exists
         section = db.query(Section).filter(Section.id == section_id).first()
         if not section:
