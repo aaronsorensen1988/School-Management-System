@@ -11,7 +11,22 @@ from sqlalchemy.orm import Session
 from database.database import get_db
 
 # Security
+from starlette.middleware.sessions import SessionMiddleware
+
 from utils.security import verify_password
+from auth.session import (
+    SESSION_MAX_AGE,
+    authenticate,
+    current_actor,
+    login_user,
+    logout_user,
+    session_secret,
+)
+from data_access.repositories.student_repository import (
+    AccessDenied,
+    StudentRepository,
+    redact,
+)
 
 # Logging
 import logging
@@ -50,6 +65,16 @@ from business_logic.amg.scheduling_service import scheduling_service, CapacityLi
 # ---------------------------------------------------------
 app = FastAPI()
 
+# Signed cookie sessions, so the app knows who is logged in. Without this
+# the role checks in T1-013 have nobody to check against.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=session_secret(),
+    max_age=SESSION_MAX_AGE,
+    same_site="lax",
+    https_only=False,  # flip to True once T1-008 puts us behind TLS
+)
+
 # ---------------------------------------------------------
 # Mount static folder (CSS, images, JS)
 # ---------------------------------------------------------
@@ -76,24 +101,33 @@ def login_page(request: Request):
 
 
 @app.post("/login")
-def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    stored_user = {
-        "username": "admin",
-        "hashed_password": "$2b$12$FJN3VZMycl1zSuvBXw9CbeagX9kP3qU6ZLEyxjHMPGpgqu8gnUtZW"
-    }
+def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    user = authenticate(db, username, password)
 
-    # Successful login
-    if username == stored_user["username"] and verify_password(password, stored_user["hashed_password"]):
+    if user is not None:
+        login_user(request, user)
         logging.info(f"Successful login for user: {username}")
         return RedirectResponse("/dashboard", status_code=302)
 
-    # Failed login
     logging.warning(f"Failed login attempt for username: {username}")
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"request": request, "error": "Invalid username or password"}
+        {"request": request, "error": "Invalid username or password"},
+        status_code=401,
     )
+
+
+@app.get("/logout")
+def logout(request: Request):
+    logout_user(request)
+    return RedirectResponse("/login", status_code=302)
+
 
 # ---------------------------------------------------------
 # DASHBOARD
@@ -106,11 +140,21 @@ def dashboard(request: Request):
 # STUDENTS PAGE
 # ---------------------------------------------------------
 @app.get("/students", response_class=HTMLResponse)
-def students_page(request: Request):
+def students_page(request: Request, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+
+    # Only the students this person may see, with contact details stripped
+    # for anyone who shouldn't have them.
+    rows = [
+        redact(StudentService._to_dict(s), actor, student_user_id=s.user_id)
+        for s in StudentRepository(db).list_visible(actor)
+    ]
     return templates.TemplateResponse(
         request,
         "students.html",
-        {"request": request, "students": student_service.list_students()}
+        {"request": request, "students": rows, "actor": actor}
     )
 
 # ---------------------------------------------------------
@@ -134,7 +178,13 @@ def enroll_student(
 # ADD STUDENT (SIEM-004: T1-016 form, T1-018 validation)
 # ---------------------------------------------------------
 @app.get("/students/new", response_class=HTMLResponse)
-def new_student_form(request: Request):
+def new_student_form(request: Request, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+    if actor.role != "Admin":
+        return _denied(request, "Only administrators can enroll students.")
+
     return templates.TemplateResponse(
         request,
         "student_form.html",
@@ -143,7 +193,16 @@ def new_student_form(request: Request):
 
 
 @app.post("/students/new", response_class=HTMLResponse)
-async def create_student(request: Request):
+async def create_student(request: Request, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+    if actor.role != "Admin":
+        logging.warning(
+            f"Blocked student create by user {actor.user_id} (role {actor.role})"
+        )
+        return _denied(request, "Only administrators can enroll students.")
+
     form = dict(await request.form())
     student_id, errors = student_service.create_student(form)
 
@@ -192,11 +251,51 @@ def home(request: Request):
 # STUDENT UI PAGE
 # ---------------------------------------------------------
 @app.get("/ui/student/{student_id}", response_class=HTMLResponse)
-def student_ui(request: Request, student_id: str):
-    student = student_service.get_student(student_id)
+def student_ui(request: Request, student_id: str, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+
+    try:
+        sid = int(student_id)
+    except (TypeError, ValueError):
+        return _not_found(request)
+
+    repo = StudentRepository(db)
+    try:
+        student = repo.get(actor, sid)
+    except LookupError:
+        return _not_found(request)
+    except AccessDenied:
+        # Logged, not silently empty. Someone poking at record ids is worth
+        # seeing in the trail (T1-014).
+        logging.warning(
+            f"Access denied: user {actor.user_id} (role {actor.role}) "
+            f"requested student {sid}"
+        )
+        return _denied(request, "You do not have access to that student record.")
+
+    data = redact(
+        StudentService._to_dict(student), actor, student_user_id=student.user_id
+    )
+    return templates.TemplateResponse(
+        request, "student_profile.html", {"request": request, "student": data}
+    )
+
+
+def _denied(request: Request, message: str):
     return templates.TemplateResponse(
         request,
         "student_profile.html",
-        {"request": request, "student": student},
-        status_code=200 if student else 404
+        {"request": request, "student": None, "error": message},
+        status_code=403,
+    )
+
+
+def _not_found(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "student_profile.html",
+        {"request": request, "student": None},
+        status_code=404,
     )

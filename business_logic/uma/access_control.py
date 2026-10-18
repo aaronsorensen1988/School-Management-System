@@ -33,5 +33,14 @@ class AccessControl:
 
         if role == "Parent":
             return student_id in child_ids
-        
+
         return False
+
+    @staticmethod
+    def can_manage_students(role):
+        """Who can enroll or edit a student. Admins only (T1-013, Nick).
+
+        Teachers read their own students but don't create them, and a
+        student editing their own record defeats the point of having one.
+        """
+        return role == "Admin"
