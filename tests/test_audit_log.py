@@ -169,3 +169,29 @@ def test_every_attempt_lands_in_order(repo, db):
     rows = db.query(AccessLog).order_by(AccessLog.id).all()
     assert [r.outcome for r in rows] == [ALLOWED, DENIED, ALLOWED]
     assert [r.action for r in rows] == [VIEW, VIEW, LIST]
+
+def test_audit_log_does_not_commit_student_creation(db):
+    repo = StudentRepository(db)
+
+    repo.create(
+        ADMIN,
+        student_number="S-ROLLBACK",
+        first_name="Rollback",
+        last_name="Test",
+        grade_level=9,
+        date_of_birth="2011-01-01",
+        home_address="123 Test St",
+        guardian_name="Test Parent",
+        guardian_email="parent@test.edu",
+    )
+
+    # Simulate something later in the request failing.
+    db.rollback()
+
+    student = (
+        db.query(Student)
+        .filter(Student.student_number == "S-ROLLBACK")
+        .first()
+    )
+
+    assert student is None
