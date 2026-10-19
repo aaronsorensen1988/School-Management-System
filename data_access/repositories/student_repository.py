@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from business_logic.uma.access_control import AccessControl
-from data_access.repositories.audit_repository import record
+from data_access.repositories.audit_repository import record, record_independent
 from database.audit import ALLOWED, CREATE, DENIED, LIST, VIEW
 from database.students import Student
 
@@ -103,21 +103,31 @@ class StudentRepository:
         student = Student(**fields)
         self.db.add(student)
         self.db.flush()
-        self._log(actor, CREATE, ALLOWED, student.id, commit=False)
+        self._log(actor, CREATE, ALLOWED, student.id, independent=False)
         return student
 
     # -- helpers -------------------------------------------------------
 
-    def _log(self, actor, action, outcome, resource_id=None, detail=None, commit=True):
-        """Record and commit straight away.
-
-        Has to commit, not flush. A denial ends in an exception and a
-        rolled back request, and a plain read never commits at all, so a
-        flushed row would be thrown away either way.
-        """
-        record(self.db, actor, action, "student", resource_id, outcome, detail)
-        if commit:
-            self.db.commit()
+    def _log(
+        self,
+        actor,
+        action,
+        outcome,
+        resource_id=None,
+        detail=None,
+        independent=True
+    ):
+        """Record an audit event without committing unrelated caller work."""
+        if independent:
+            record_independent(
+                self.db, actor, action, "student",
+                resource_id, outcome, detail
+            )
+        else:
+            record(
+                self.db, actor, action, "student",
+                resource_id, outcome, detail
+            )
 
     def _may_view(self, actor: Actor, student: Student) -> bool:
         # Sean's policy compares requester_id to student_id. a logged in
