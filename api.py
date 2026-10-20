@@ -122,14 +122,15 @@ def logout(request: Request):
 
 
 # ---------------------------------------------------------
-# DASHBOARD
+# DASHBOARD PAGE
 # ---------------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db)):
     actor = current_actor(request, db)
     if actor.role is None:
         return RedirectResponse("/login", status_code=302)
-    return templates.TemplateResponse(request, "dashboard.html", {"request": request})
+    # Passing "actor" to the template so it can check roles!
+    return templates.TemplateResponse(request, "dashboard.html", {"request": request, "actor": actor})
 
 # ---------------------------------------------------------
 # STUDENTS PAGE
@@ -150,6 +151,33 @@ def students_page(request: Request, db: Session = Depends(get_db)):
         request,
         "students.html",
         {"request": request, "students": rows, "actor": actor}
+    )
+
+
+# ---------------------------------------------------------
+# PARENT PORTAL (SIEM-006 / T2-006)
+# ---------------------------------------------------------
+@app.get("/parent/portal", response_class=HTMLResponse)
+def parent_portal(request: Request, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+        
+    # Kick them out if they are logged in but aren't a parent
+    if actor.role != "Parent":
+        return RedirectResponse("/dashboard", status_code=302)
+
+    # Gets only the students this parent is allowed to see.
+    rows = [
+        redact(StudentService._to_dict(s), actor, student_user_id=s.user_id)
+        for s in StudentRepository(db).list_visible(actor)
+    ]
+    
+    return templates.TemplateResponse(
+        request,
+        "parent_portal.html",
+        {"request": request, "children": rows}
     )
 
 # ---------------------------------------------------------
