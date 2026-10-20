@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Classes</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body { height: auto; min-height: 100vh; padding: 30px 0; }
+        .login-container { width: 900px; max-width: 95%; text-align: left; }
+        .login-container h2, .login-container h3 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .unassigned { color: #b36b00; font-style: italic; }
+        .notice { color: #2e7d32; font-weight: bold; text-align: center; }
+        .panel { border-top: 1px solid #ddd; margin-top: 25px; padding-top: 10px; }
+        .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .row > div { flex: 1; min-width: 140px; }
+        label { display: block; font-weight: bold; margin-top: 10px; }
+        input[type="time"], input[type="number"], select {
+            width: 100%; padding: 10px; margin: 6px 0; border-radius: 5px;
+            border: 1px solid #ccc; box-sizing: border-box; font-family: inherit;
+        }
+        .field-error { color: red; font-size: 0.9em; margin: 2px 0 6px; }
+        .assign-form { display: flex; gap: 6px; align-items: center; }
+        .assign-form select { margin: 0; padding: 6px; }
+        .assign-form button { width: auto; padding: 6px 12px; }
+        .secondary { background-color: #777; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>{% if is_admin %}Class Schedule{% else %}My Classes{% endif %}</h2>
+
+    {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+    {% if message %}<p class="error">{{ message }}</p>{% endif %}
+
+    <table>
+        <tr>
+            <th>Course</th>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Room</th>
+            <th>Teacher</th>
+            <th>Seats</th>
+        </tr>
+        {% for s in sections %}
+        <tr>
+            <td><strong>{{ s.course_code }}</strong> {{ s.course_name }}</td>
+            <td>{{ s.day }}</td>
+            <td>{{ s.time }}</td>
+            <td>{{ s.room }}</td>
+            <td>
+                {% if is_admin %}
+                <form class="assign-form" method="post" action="/classes/{{ s.id }}/teacher">
+                    <select name="teacher_id" aria-label="Teacher for {{ s.course_code }}">
+                        <option value="">Unassigned</option>
+                        {% for t in teachers %}
+                        <option value="{{ t.id }}" {% if t.id == s.teacher_id %}selected{% endif %}>{{ t.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Save</button>
+                </form>
+                {% elif s.teacher_name %}
+                {{ s.teacher_name }}
+                {% else %}
+                <span class="unassigned">Unassigned</span>
+                {% endif %}
+            </td>
+            <td>{{ s.seats_taken }} / {{ s.capacity }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">
+                {% if is_admin %}No sections yet. Add a course, then a section below.
+                {% else %}You don't have any classes scheduled yet.{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    {% if is_admin %}
+    <div class="panel">
+        <h3>Add Course</h3>
+        <form method="post" action="/classes/courses" novalidate>
+            <div class="row">
+                <div>
+                    <label for="code">Course code</label>
+                    <input type="text" id="code" name="code" value="{{ form.code or '' }}" placeholder="e.g. MATH101">
+                    {% if errors.course_code %}<p class="field-error">{{ errors.course_code }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="name">Course name</label>
+                    <input type="text" id="name" name="name" value="{{ form.name or '' }}" placeholder="e.g. Algebra I">
+                    {% if errors.course_name %}<p class="field-error">{{ errors.course_name }}</p>{% endif %}
+                </div>
+            </div>
+            <button type="submit">Add Course</button>
+        </form>
+    </div>
+
+    <div class="panel">
+        <h3>Add Section</h3>
+        {% if not courses %}
+        <p>Add a course first.</p>
+        {% else %}
+        <form method="post" action="/classes/sections" novalidate>
+            <div class="row">
+                <div>
+                    <label for="course_id">Course</label>
+                    <select id="course_id" name="course_id">
+                        <option value="">Select a course</option>
+                        {% for c in courses %}
+                        <option value="{{ c.id }}" {% if (form.course_id|string) == (c.id|string) %}selected{% endif %}>{{ c.code }} - {{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.section_course_id %}<p class="field-error">{{ errors.section_course_id }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="room">Room</label>
+                    <input type="text" id="room" name="room" value="{{ form.room or '' }}" placeholder="e.g. A101">
+                    {% if errors.section_room %}<p class="field-error">{{ errors.section_room }}</p>{% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div>
+                    <label for="day_of_week">Day</label>
+                    <select id="day_of_week" name="day_of_week">
+                        <option value="">Select a day</option>
+                        {% for d in days %}
+                        <option value="{{ d }}" {% if form.day_of_week == d %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.section_day_of_week %}<p class="field-error">{{ errors.section_day_of_week }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="start_time">Start time</label>
+                    <input type="time" id="start_time" name="start_time" value="{{ form.start_time or '' }}">
+                    {% if errors.section_start_time %}<p class="field-error">{{ errors.section_start_time }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="end_time">End time</label>
+                    <input type="time" id="end_time" name="end_time" value="{{ form.end_time or '' }}">
+                    {% if errors.section_end_time %}<p class="field-error">{{ errors.section_end_time }}</p>{% endif %}
+                </div>
+                <div>
+                    <label for="capacity">Capacity</label>
+                    <input type="number" id="capacity" name="capacity" min="1" max="{{ default_capacity }}" value="{{ form.capacity or default_capacity }}">
+                    {% if errors.section_capacity %}<p class="field-error">{{ errors.section_capacity }}</p>{% endif %}
+                </div>
+            </div>
+            <button type="submit">Add Section</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <button class="secondary" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</div>
+
+</body>
+</html>
