@@ -19,6 +19,12 @@
     <p><strong>Home address:</strong> {{ student.home_address }}</p>
     <p><strong>Parent/guardian:</strong> {{ student.guardian_name }}</p>
     <p><strong>Parent/guardian email:</strong> {{ student.guardian_email }}</p>
+    {% elif error %}
+    {# T2-037. api.py's _denied() has always passed this message. The template
+       never rendered it, so anyone who was refused saw "Student not found"
+       and a 403 that read like a 404. #}
+    <h2>Access denied</h2>
+    <p>{{ error }}</p>
     {% else %}
     <h2>Student not found</h2>
     <p>No student matches that ID.</p>
