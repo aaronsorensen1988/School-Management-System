@@ -44,3 +44,8 @@ class AccessControl:
         student editing their own record defeats the point of having one.
         """
         return role == "Admin"
+
+    @staticmethod
+    def can_record_attendance(role, requester_id, teacher_id):
+        """Teachers may record attendance only for their own assigned sections."""
+        return role == "Teacher" and requester_id == teacher_id
