@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Parent Portal</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="login-container" style="width:520px;">
+    <h2>Parent Portal: My Children</h2>
+
+    <p style="font-size: 0.9em; color: #555; background-color: #eee; padding: 10px; border-radius: 5px;">
+        <strong>Privacy Notice:</strong> This portal contains sensitive academic and attendance records protected by FERPA. Please keep this information confidential and log out when you are finished.
+    </p>
+
+    <table style="width:100%; text-align:left; margin-top:20px;">
+        <tr>
+            <th>Student ID</th>
+            <th>Name</th>
+            <th>Grade</th>
+            <th>Records</th>
+        </tr>
+
+        {% for child in children %}
+        <tr>
+            <td>{{ child.student_number }}</td>
+            <td>{{ child.name }}</td>
+            <td>{{ child.grade }}</td>
+            <td>
+                <!-- Links to the student profile page -->
+                <button onclick="window.location.href='/ui/student/{{ child.id }}'">
+                    View Records
+                </button>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4">No children linked to your account yet.</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <br>
+    <button onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</div>
+
+</body>
+</html>

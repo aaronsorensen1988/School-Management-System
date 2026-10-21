@@ -11,9 +11,15 @@
 
     <p>Select a section:</p>
 
-    <button onclick="window.location.href='/students'">Students</button>
-    <button onclick="window.location.href='/teachers'">Teachers</button>
-    <button onclick="window.location.href='/classes'">Classes</button>
+    {% if actor and actor.role == 'Parent' %}
+        <!-- Parents only see this button -->
+        <button onclick="window.location.href='/parent/portal'">Parent Portal</button>
+    {% else %}
+        <!-- Staff and Admins see these buttons -->
+        <button onclick="window.location.href='/students'">Students</button>
+        <button onclick="window.location.href='/teachers'">Teachers</button>
+        <button onclick="window.location.href='/classes'">Classes</button>
+    {% endif %}
 </div>
 
 </body>
