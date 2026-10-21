@@ -47,14 +47,6 @@ students = [
     {"id": "1003", "name": "Michael Johnson", "grade": "12"},
 ]
 
-# ---------------------------------------------------------
-# Demo teacher data
-# ---------------------------------------------------------
-teachers = [
-    {"id": "T001", "name": "Mrs. Anderson", "subject": "Math"},
-    {"id": "T002", "name": "Mr. Brown", "subject": "Science"},
-    {"id": "T003", "name": "Ms. Carter", "subject": "English"},
-]
 
 from business_logic.uma.uma_service import UmaService
 from business_logic.siem.student_service import StudentService
@@ -133,7 +125,10 @@ def logout(request: Request):
 # DASHBOARD
 # ---------------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request):
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse(request, "dashboard.html", {"request": request})
 
 # ---------------------------------------------------------
@@ -220,24 +215,63 @@ async def create_student(request: Request, db: Session = Depends(get_db)):
 # ---------------------------------------------------------
 # TEACHERS PAGE
 # ---------------------------------------------------------
+from database.models import User, Role
+
 @app.get("/teachers", response_class=HTMLResponse)
-def teachers_page(request: Request):
+def teachers_page(request: Request, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+
+    teacher_role = db.query(Role).filter(Role.name == "Teacher").first()
+    teacher_users = db.query(User).filter(User.role_id == teacher_role.id).all() if teacher_role else []
+
+    # Format the data to match what the template expects
+    teacher_list = [
+        {"id": t.id, "name": f"{t.first_name} {t.last_name}", "subject": "See classes"}
+        for t in teacher_users
+    ]
+
     return templates.TemplateResponse(
         request,
         "teachers.html",
-        {"request": request, "teachers": teachers}
+        {"request": request, "teachers": teacher_list}
     )
 
 # ---------------------------------------------------------
 # TEACHER PROFILE PAGE
 # ---------------------------------------------------------
 @app.get("/ui/teacher/{teacher_id}", response_class=HTMLResponse)
-def teacher_ui(request: Request, teacher_id: str):
-    teacher = next((t for t in teachers if t["id"] == teacher_id), None)
+def teacher_ui(request: Request, teacher_id: int, db: Session = Depends(get_db)):
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+
+    teacher_role = db.query(Role).filter(Role.name == "Teacher").first()
+    
+    # Query for the specific user ID ensuring they are actually a teacher
+    user = None
+    if teacher_role:
+        user = db.query(User).filter(User.id == teacher_id, User.role_id == teacher_role.id).first()
+
+    if not user:
+        return templates.TemplateResponse(
+            request, 
+            "teacher_profile.html", 
+            {"request": request, "teacher": None}, 
+            status_code=404
+        )
+
+    teacher_data = {
+        "id": user.id,
+        "name": f"{user.first_name} {user.last_name}",
+        "subject": "See classes"
+    }
+
     return templates.TemplateResponse(
         request,
         "teacher_profile.html",
-        {"request": request, "teacher": teacher}
+        {"request": request, "teacher": teacher_data}
     )
 
 # ---------------------------------------------------------
