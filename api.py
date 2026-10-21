@@ -77,6 +77,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ---------------------------------------------------------
 templates = Jinja2Templates(directory="templates")
 templates.env.cache = None   # Fixes Jinja2 caching bug
+# Classes page: course scheduling UI and teacher assignment (AMG-007 / T1-021, T1-023).
+# Its routes live in presentation/classes_routes.py so they don't collide with
+# other branches editing this file.
+from presentation.classes_routes import router as classes_router
+app.include_router(classes_router)
 
 # ---------------------------------------------------------
 # Business logic service
