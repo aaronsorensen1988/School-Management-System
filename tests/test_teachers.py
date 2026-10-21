@@ -14,30 +14,32 @@ KEY = generate_key()
 
 @pytest.fixture
 def client(monkeypatch):
-    # Set up the secure environment variables for testing
     monkeypatch.setenv("SMS_ENCRYPTION_KEYS", f"k1:{KEY}")
     monkeypatch.setenv("SMS_SESSION_SECRET", "test-secret")
     from security import keys as keys_module
     keys_module.active_keyring(refresh=True)
 
-    # Spin up a temporary, isolated SQLite database just for this test
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(bind=engine)
     TestSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
-    # Insert fake roles and users into the temporary database
     with Session(engine) as s:
+        # Create both Admin and Teacher roles
         admin_role = Role(name="Admin")
-        s.add(admin_role)
+        teacher_role = Role(name="Teacher")
+        s.add_all([admin_role, teacher_role])
         s.flush()
 
+        # Create our Admin tester and a sample Teacher
         admin = User(username="test_admin", password_hash=hash_password("pw"),
                       first_name="Test", last_name="Admin", email="admin@school.edu",
                       role_id=admin_role.id)
-        s.add(admin)
+        teacher = User(username="mr_feeny", password_hash=hash_password("pw"),
+                      first_name="George", last_name="Feeny", email="feeny@school.edu",
+                      role_id=teacher_role.id)
+        s.add_all([admin, teacher])
         s.commit()
 
-    # Tell the FastAPI app to use our temporary database
     import api
     def override_get_db():
         db = TestSession()
@@ -55,13 +57,20 @@ def client(monkeypatch):
 # --- THE ACTUAL TESTS ---
 
 def test_admin_can_access_teachers_page(client):
-    """Verify that authorized staff can load the wired-up teachers page."""
     client.post("/login", data={"username": "test_admin", "password": "pw"})
     r = client.get("/teachers")
     assert r.status_code == 200
 
 def test_anonymous_user_cannot_access_teachers_page(client):
-    """Verify that someone not logged in gets kicked back to the login screen."""
     r = client.get("/teachers")
     assert r.status_code == 302
     assert r.headers["location"] == "/login"
+
+def test_teacher_data_renders_on_page(client):
+    """Verify that a database-backed teacher actually appears in the HTML."""
+    client.post("/login", data={"username": "test_admin", "password": "pw"})
+    r = client.get("/teachers")
+    
+    # Check that the sample teacher's details from the DB are present in the response
+    assert "George" in r.text
+    assert "Feeny" in r.text
