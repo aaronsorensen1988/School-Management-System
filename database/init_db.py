@@ -80,8 +80,10 @@ def seed_admin():
 
 def init_db():
     # Imported here so create_all sees them.
-    from database import students  # noqa: F401  SIEM-004
-    from database import audit     # noqa: F401  T1-014
+    from database import students    # noqa: F401  SIEM-004
+    from database import audit       # noqa: F401  T1-014
+    from database import attendance  # noqa: F401  T2-002
+    from database import grades      # noqa: F401  T2-012
 
     Base.metadata.create_all(bind=engine)
     seed_roles()
