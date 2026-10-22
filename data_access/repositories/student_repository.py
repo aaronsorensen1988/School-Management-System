@@ -106,6 +106,27 @@ class StudentRepository:
         self._log(actor, CREATE, ALLOWED, student.id, commit=False)
         return student
 
+    # -- parent portal disclosures, T2-008 -----------------------------
+
+    def record_parent_disclosure(self, actor: Actor, students) -> None:
+        """One row per child shown to a parent.
+
+        list_visible already records that a list happened and how many rows
+        came back. For staff that's enough. For a parent it isn't, because
+        the question anyone asks later is which child's record was shown to
+        whom, and "1 of 12 rows" doesn't answer it.
+        """
+        for student in students:
+            self._log(actor, VIEW, ALLOWED, student.id, detail="parent portal")
+
+    def record_portal_refusal(self, actor: Actor) -> None:
+        """Somebody who isn't a parent asking for the parent portal.
+
+        They get sent to their own dashboard rather than refused outright,
+        so nothing else would record it.
+        """
+        self._log(actor, VIEW, DENIED, detail="parent portal")
+
     # -- helpers -------------------------------------------------------
 
     def _log(self, actor, action, outcome, resource_id=None, detail=None, commit=True):
