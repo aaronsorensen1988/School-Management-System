@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from data_access.repositories.student_repository import ANONYMOUS, Actor
 from database.models import Role, User
+from database.parents import ParentStudent
 
 SESSION_USER_ID = "user_id"
 SESSION_USERNAME = "username"
@@ -85,4 +86,22 @@ def current_actor(request, db: Session) -> Actor:
         return ANONYMOUS
 
     role = db.query(Role).filter(Role.id == user.role_id).first()
-    return Actor(user_id=user.id, role=role.name if role else None)
+    role_name = role.name if role else None
+
+    child_ids = ()
+
+    if role_name == "Parent":
+        child_ids = tuple(
+            row.student_id
+            for row in (
+                db.query(ParentStudent)
+                .filter(ParentStudent.parent_user_id == user.id)
+                .all()
+            )
+        )
+
+    return Actor(
+        user_id=user.id,
+        role=role_name,
+        child_ids=child_ids,
+    )
