@@ -84,6 +84,7 @@ def init_db():
     from database import audit       # noqa: F401  T1-014
     from database import attendance  # noqa: F401  T2-002
     from database import grades      # noqa: F401  T2-012
+    from database import announcements  # noqa: F401  T2-023
 
     Base.metadata.create_all(bind=engine)
     seed_roles()
