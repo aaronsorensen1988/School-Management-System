@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body { height: auto; min-height: 100vh; padding: 30px 0; }
+        .login-container { width: 900px; max-width: 95%; text-align: left; }
+        .login-container h2, .login-container h3 { text-align: center; }
+        .sub { text-align: center; color: #555; margin-top: -6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .notice { color: #2e7d32; font-weight: bold; text-align: center; }
+        .field-error { color: red; font-size: 0.9em; margin: 2px 0 0; }
+        .date-form { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 10px 0; }
+        .date-form input[type="date"] { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-family: inherit; }
+        .date-form button { width: auto; padding: 8px 14px; margin: 0; }
+        select, input[type="text"].note {
+            width: 100%; padding: 6px; margin: 0; border-radius: 5px;
+            border: 1px solid #ccc; box-sizing: border-box; font-family: inherit;
+        }
+        .saved-tag { color: #2e7d32; font-size: 0.85em; }
+        .view-only { text-align: center; color: #b36b00; font-style: italic; }
+        a.take { color: #2e7d32; font-weight: bold; }
+        .secondary { background-color: #777; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Attendance</h2>
+
+    {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+    {% if message %}<p class="error">{{ message }}</p>{% endif %}
+
+    {% if section %}
+    <p class="sub"><strong>{{ section.course_code }}</strong> {{ section.course_name }}
+        &middot; {{ section.day }} {{ section.time }} &middot; Room {{ section.room }}</p>
+
+    <form class="date-form" method="get" action="/attendance/{{ section.id }}">
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" value="{{ on_date }}" max="{{ today }}">
+        <button type="submit">Show</button>
+    </form>
+    {% if errors.date %}<p class="field-error" style="text-align:center">{{ errors.date }}</p>{% endif %}
+    {% if errors.roster %}<p class="field-error" style="text-align:center">{{ errors.roster }}</p>{% endif %}
+
+    {% if not can_save %}
+    <p class="view-only">View only. Only the teacher assigned to this class can record attendance.</p>
+    {% endif %}
+
+    {% if rows %}
+    <form method="post" action="/attendance/{{ section.id }}" novalidate>
+        <input type="hidden" name="on_date" value="{{ on_date }}">
+        <table>
+            <tr>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Note (optional)</th>
+            </tr>
+            {% for r in rows %}
+            <tr>
+                <td>{{ r.name }}{% if r.recorded %} <span class="saved-tag">(saved)</span>{% endif %}</td>
+                <td>
+                    <select name="status_{{ r.id }}" aria-label="Status for {{ r.name }}" {% if not can_save %}disabled{% endif %}>
+                        {% if r.status not in statuses %}<option value="" selected>Choose...</option>{% endif %}
+                        {% for st in statuses %}
+                        <option value="{{ st }}" {% if st == r.status %}selected{% endif %}>{{ st|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.get(r.id) %}<p class="field-error">{{ errors.get(r.id) }}</p>{% endif %}
+                </td>
+                <td>
+                    <input type="text" class="note" name="note_{{ r.id }}" value="{{ r.note }}"
+                           maxlength="{{ note_max }}" aria-label="Note for {{ r.name }}" {% if not can_save %}disabled{% endif %}>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% if can_save %}<button type="submit">Save Attendance</button>{% endif %}
+    </form>
+    {% else %}
+    <p>No students are enrolled in this class yet.</p>
+    {% endif %}
+
+    <button class="secondary" onclick="window.location.href='/attendance'">Back to My Classes</button>
+
+    {% else %}
+
+    {% if sections %}
+    <table>
+        <tr>
+            <th>Course</th>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Room</th>
+            {% if is_admin %}<th>Teacher</th>{% endif %}
+            <th></th>
+        </tr>
+        {% for s in sections %}
+        <tr>
+            <td><strong>{{ s.course_code }}</strong> {{ s.course_name }}</td>
+            <td>{{ s.day }}</td>
+            <td>{{ s.time }}</td>
+            <td>{{ s.room }}</td>
+            {% if is_admin %}<td>{{ s.teacher_name or "Unassigned" }}</td>{% endif %}
+            <td><a class="take" href="/attendance/{{ s.id }}">{% if is_admin %}View{% else %}Take attendance{% endif %}</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% elif not message %}
+    <p>You don't have any classes to take attendance for yet.</p>
+    {% endif %}
+
+    <button class="secondary" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+    {% endif %}
+</div>
+
+</body>
+</html>

@@ -154,6 +154,9 @@
     </div>
     {% endif %}
 
+    {% if actor.role in ("Teacher", "Admin") %}
+    <button style="margin-top: 20px;" onclick="window.location.href='/attendance'">Attendance</button>
+    {% endif %}
     <button class="secondary" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
 </div>
 
