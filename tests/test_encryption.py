@@ -83,7 +83,20 @@ def test_blind_index_is_stable_and_ignores_case(ring):
     a = blind_index("  Ada@School.edu ", "users.email", keyring=ring)
     b = blind_index("ada@school.edu", "users.email", keyring=ring)
     assert a == b
-    assert "ada" not in a.lower()
+    # the whole address, not a fragment. "ada" on its own is three valid
+    # base64 characters and turns up in a random token about once in 800
+    # runs, which is a test that fails for no reason.
+    assert "ada@school.edu" not in a.lower()
+
+
+def test_blind_index_needs_the_key(ring):
+    """Why this is an HMAC and not a plain hash. Without the key anyone with
+    a copy of the database could hash a list of likely addresses and match
+    the rows up."""
+    other = KeyRing.from_env({"SMS_ENCRYPTION_KEYS": f"k1:{KEY_B}"})
+    assert blind_index("ada@school.edu", "users.email", keyring=ring) != blind_index(
+        "ada@school.edu", "users.email", keyring=other
+    )
 
 
 # --- through the ORM, which is how everyone else will hit this ---
