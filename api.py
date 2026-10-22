@@ -228,14 +228,18 @@ async def create_student(request: Request, db: Session = Depends(get_db)):
     actor = current_actor(request, db)
     if actor.role is None:
         return RedirectResponse("/login", status_code=302)
-    if actor.role != "Admin":
+
+    form = dict(await request.form())
+    try:
+        # T2-036. Goes through the repository now, so the create lands in
+        # the access log either way. The role check moved in there with it,
+        # which is why a refusal here is an exception rather than an if.
+        student_id, errors = student_service.create_student(db, actor, form)
+    except AccessDenied:
         logging.warning(
             f"Blocked student create by user {actor.user_id} (role {actor.role})"
         )
         return _denied(request, "Only administrators can enroll students.")
-
-    form = dict(await request.form())
-    student_id, errors = student_service.create_student(form)
 
     # Show the form again with the user's entries and error messages.
     if errors:

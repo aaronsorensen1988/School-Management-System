@@ -93,13 +93,24 @@ class StudentRepository:
 
     # -- writes --------------------------------------------------------
 
-    def create(self, actor: Actor, **fields) -> Student:
-        """Add a student. Admins only."""
+    def authorize_create(self, actor: Actor) -> None:
+        """The permission half of create(), on its own. T2-036.
+
+        Split out so a caller can be refused before it bothers validating a
+        form. Otherwise someone who isn't allowed to enrol anyone still
+        learns which fields the form requires by submitting a bad one.
+        create() calls this too, so there is still one place that decides
+        and one place that logs the refusal.
+        """
         if not AccessControl.can_manage_students(actor.role):
             self._log(actor, CREATE, DENIED)
             raise AccessDenied(
                 f"{actor.role or 'anonymous'} user {actor.user_id} may not create students"
             )
+
+    def create(self, actor: Actor, **fields) -> Student:
+        """Add a student. Admins only."""
+        self.authorize_create(actor)
         student = Student(**fields)
         self.db.add(student)
         self.db.flush()
