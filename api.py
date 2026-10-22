@@ -5,7 +5,6 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from presentation.grades_routes import router as grades_router
 
 # Database + ORM
 from sqlalchemy.orm import Session

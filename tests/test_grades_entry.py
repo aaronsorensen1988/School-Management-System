@@ -59,3 +59,19 @@ def test_post_grade_entry_and_update(mock_current_actor):
         assert total_grades == 1
     finally:
         db.close()
+
+def test_get_grade_entry_unauthenticated_redirect():
+    # follow_redirects=False stops the test from automatically loading the login page
+    response = client.get("/grades/entry", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login"
+
+def test_post_grade_entry_unauthenticated_redirect():
+    form_data = {
+        "student_id": 1,
+        "assignment_id": 1,
+        "points_earned": 95.0
+    }
+    response = client.post("/grades/entry", data=form_data, follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login"
