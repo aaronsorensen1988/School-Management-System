@@ -13,6 +13,11 @@ class DummyActor:
     user_id = 1
 
 
+class DummyStudentActor:
+    role = "Student"
+    user_id = 2
+
+
 @patch("presentation.grades_routes.current_actor")
 def test_get_grade_entry_page(mock_current_actor):
     mock_current_actor.return_value = DummyActor()
@@ -53,11 +58,6 @@ def test_post_grade_entry(mock_current_actor, mock_record_grade):
     assert args[4] == 95.0
 
 
-class DummyStudentActor:
-    role = "Student"
-    user_id = 2
-
-
 @patch("presentation.grades_routes.current_actor")
 def test_non_teacher_cannot_open_grade_entry(mock_current_actor):
     mock_current_actor.return_value = DummyStudentActor()
@@ -65,3 +65,27 @@ def test_non_teacher_cannot_open_grade_entry(mock_current_actor):
     response = client.get("/grades/entry")
 
     assert response.status_code == 403
+
+
+def test_get_grade_entry_unauthenticated_redirect():
+    response = client.get("/grades/entry", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login"
+
+
+def test_post_grade_entry_unauthenticated_redirect():
+    form_data = {
+        "student_id": 1,
+        "assignment_id": 1,
+        "points_earned": 95.0,
+    }
+
+    response = client.post(
+        "/grades/entry",
+        data=form_data,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/login"
