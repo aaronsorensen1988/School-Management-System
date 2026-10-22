@@ -1,5 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from database.grades import Assignment, Grade
 
 from database.database import Base
 
