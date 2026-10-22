@@ -3,7 +3,7 @@ import os
 from database.database import Base, engine, SessionLocal
 from database.models import Role, User
 from database import models
-from database import scheduling  # noqa: F401  needs importing or create_all skips it
+from database import scheduling, parents  # noqa: F401  needs importing or create_all skips it
 
 # Login now checks the users table instead of a hardcoded account, so a
 # fresh database needs one admin or nobody can get in at all.
