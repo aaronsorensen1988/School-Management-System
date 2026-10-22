@@ -4,12 +4,18 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from database.database import get_db
 from database.grades import Grade
+from auth.session import current_actor 
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 @router.get("/grades/entry", response_class=HTMLResponse)
-def get_grade_entry(request: Request):
+def get_grade_entry(request: Request, db: Session = Depends(get_db)):
+    # 2. Check login status (Note: added db Session to parameters for this to work)
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+        
     return templates.TemplateResponse(request, "grade_entry.html")
 
 @router.post("/grades/entry")
@@ -20,6 +26,11 @@ def post_grade_entry(
     points_earned: float = Form(...),
     db: Session = Depends(get_db)
 ):
+    # 3. Block unauthorized form submissions
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+        
     # 1. Check if a grade already exists for this student/assignment combo
     existing_grade = db.query(Grade).filter(
         Grade.student_id == student_id,
