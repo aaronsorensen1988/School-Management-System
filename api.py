@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from presentation.grades_routes import router as grades_router
 
 # Database + ORM
 from sqlalchemy.orm import Session
@@ -82,9 +83,14 @@ templates.env.cache = None   # Fixes Jinja2 caching bug
 # other branches editing this file.
 from presentation.classes_routes import router as classes_router
 app.include_router(classes_router)
+
 # Attendance page (SIEM-005 / T2-001, T2-004). Own router for the same reason.
 from presentation.attendance_routes import router as attendance_router
 app.include_router(attendance_router)
+
+# Grade Entry UI (T2-011)
+from presentation.grades_routes import router as grades_router
+app.include_router(grades_router)
 
 # ---------------------------------------------------------
 # Business logic service
