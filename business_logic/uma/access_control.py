@@ -49,3 +49,9 @@ class AccessControl:
     def can_record_attendance(role, requester_id, teacher_id):
         """Teachers may record attendance only for their own assigned sections."""
         return role == "Teacher" and requester_id == teacher_id
+        
+    @staticmethod
+    def can_post_announcement(role):
+        """Only school staff may create or publish announcements."""
+        return role in ("Admin", "Teacher")
+        
