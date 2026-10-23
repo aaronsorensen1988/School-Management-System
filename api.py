@@ -175,14 +175,25 @@ def parent_portal(request: Request, db: Session = Depends(get_db)):
     if actor.role is None:
         return RedirectResponse("/login", status_code=302)
         
+    repo = StudentRepository(db)
+
     # Kick them out if they are logged in but aren't a parent
     if actor.role != "Parent":
+        # T2-008. They only get redirected, so without this the attempt
+        # leaves no trace anywhere.
+        repo.record_portal_refusal(actor)
         return RedirectResponse("/dashboard", status_code=302)
 
     # Gets only the students this parent is allowed to see.
+    children = repo.list_visible(actor)
+
+    # T2-008. Each child shown gets its own line naming them, which is what
+    # a FERPA question actually needs.
+    repo.record_parent_disclosure(actor, children)
+
     rows = [
         redact(StudentService._to_dict(s), actor, student_user_id=s.user_id)
-        for s in StudentRepository(db).list_visible(actor)
+        for s in children
     ]
     
     return templates.TemplateResponse(
