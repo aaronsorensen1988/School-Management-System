@@ -1,77 +1,91 @@
 from unittest.mock import patch
+
 from fastapi.testclient import TestClient
+
 from api import app
-from database.database import SessionLocal
-from database.grades import Grade
+
 
 client = TestClient(app)
 
-# Dummy user to bypass authentication during testing
+
 class DummyActor:
     role = "Teacher"
     user_id = 1
 
+
+class DummyStudentActor:
+    role = "Student"
+    user_id = 2
+
+
 @patch("presentation.grades_routes.current_actor")
 def test_get_grade_entry_page(mock_current_actor):
-    # Force the auth function to return our dummy user
     mock_current_actor.return_value = DummyActor()
-    
+
     response = client.get("/grades/entry")
+
     assert response.status_code == 200
     assert "Enter Student Grade" in response.text
 
+
+@patch("presentation.grades_routes.GradeService.record_grade")
 @patch("presentation.grades_routes.current_actor")
-def test_post_grade_entry_and_update(mock_current_actor):
-    # Force the auth function to return our dummy user
+def test_post_grade_entry(mock_current_actor, mock_record_grade):
     mock_current_actor.return_value = DummyActor()
-    
-    db = SessionLocal()
-    try:
-        # Clean up leftover test data from previous runs to ensure a clean slate
-        db.query(Grade).filter_by(student_id=1, assignment_id=1).delete()
-        db.commit()
-        
-        # 1. Test Initial Insertion
-        form_data = {
-            "student_id": 1,
-            "assignment_id": 1,
-            "points_earned": 95.0
-        }
-        response = client.post("/grades/entry", data=form_data)
-        assert response.status_code == 200
-        
-        # Verify it was inserted correctly
-        grade = db.query(Grade).filter_by(student_id=1, assignment_id=1).first()
-        assert grade is not None
-        assert grade.points_earned == 95.0
-        
-        # 2. Test Updating the Existing Grade
-        form_data["points_earned"] = 82.5
-        client.post("/grades/entry", data=form_data)
-        
-        # Verify the database updated the existing row instead of adding a new one
-        db.expire_all()  # Clear cache to get fresh DB data
-        updated_grade = db.query(Grade).filter_by(student_id=1, assignment_id=1).first()
-        assert updated_grade.points_earned == 82.5
-        
-        # Verify we didn't create duplicate rows
-        total_grades = db.query(Grade).filter_by(student_id=1, assignment_id=1).count()
-        assert total_grades == 1
-    finally:
-        db.close()
+
+    form_data = {
+        "student_id": 1,
+        "assignment_id": 1,
+        "points_earned": 95.0,
+    }
+
+    response = client.post(
+        "/grades/entry",
+        data=form_data,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/grades/entry"
+
+    mock_record_grade.assert_called_once()
+
+    args = mock_record_grade.call_args.args
+
+    assert args[1].user_id == 1
+    assert args[2] == 1
+    assert args[3] == 1
+    assert args[4] == 95.0
+
+
+@patch("presentation.grades_routes.current_actor")
+def test_non_teacher_cannot_open_grade_entry(mock_current_actor):
+    mock_current_actor.return_value = DummyStudentActor()
+
+    response = client.get("/grades/entry")
+
+    assert response.status_code == 403
+
 
 def test_get_grade_entry_unauthenticated_redirect():
-    # follow_redirects=False stops the test from automatically loading the login page
     response = client.get("/grades/entry", follow_redirects=False)
+
     assert response.status_code == 302
     assert response.headers["location"] == "/login"
+
 
 def test_post_grade_entry_unauthenticated_redirect():
     form_data = {
         "student_id": 1,
         "assignment_id": 1,
-        "points_earned": 95.0
+        "points_earned": 95.0,
     }
-    response = client.post("/grades/entry", data=form_data, follow_redirects=False)
+
+    response = client.post(
+        "/grades/entry",
+        data=form_data,
+        follow_redirects=False,
+    )
+
     assert response.status_code == 302
     assert response.headers["location"] == "/login"

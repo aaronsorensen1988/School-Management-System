@@ -55,3 +55,8 @@ class AccessControl:
         """Only school staff may create or publish announcements."""
         return role in ("Admin", "Teacher")
         
+
+    @staticmethod
+    def can_record_grade(role, requester_id, teacher_id):
+        """Teachers may record grades only for their own assigned sections."""
+        return role == "Teacher" and requester_id == teacher_id
