@@ -50,7 +50,16 @@ def post_grade_entry(
     actor = current_actor(request, db)
     if actor.role is None:
         return RedirectResponse("/login", status_code=302)
-        
+
+    # Only teachers get as far as checking the score, so a student or parent
+    # is refused (403) instead of being shown a validation message. Same
+    # check as the GET route. Sean caught this in review of T2-014.
+    if actor.role != "Teacher":
+        raise HTTPException(
+            status_code=403,
+            detail="Only teachers may enter grades.",
+        )
+
     form = {"student_id": student_id, "assignment_id": assignment_id,
             "points_earned": points_earned}
 

@@ -223,3 +223,20 @@ def test_good_score_still_redirects(mock_actor, mock_record, client):
                                            "points_earned": "95"}, follow_redirects=False)
     assert r.status_code == 303
     assert mock_record.call_args.args[4] == 95.0
+
+
+class DummyStudent:
+    role = "Student"
+    user_id = 2
+
+
+@patch("presentation.grades_routes.GradeService.record_grade")
+@patch("presentation.grades_routes.current_actor")
+def test_student_is_refused_before_the_score_is_checked(mock_actor, mock_record, client):
+    """A student sending a bad score gets 403, not a validation message."""
+    mock_actor.return_value = DummyStudent()
+    r = client.post("/grades/entry", data={"student_id": 1, "assignment_id": 1,
+                                           "points_earned": "abc"}, follow_redirects=False)
+    assert r.status_code == 403
+    assert "Points must be a number" not in r.text
+    mock_record.assert_not_called()
