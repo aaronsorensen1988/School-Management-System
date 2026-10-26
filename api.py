@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from presentation import announcement_routes
+
 
 # Database + ORM
 from sqlalchemy.orm import Session
@@ -56,6 +58,7 @@ from business_logic.amg.scheduling_service import scheduling_service, CapacityLi
 # Create FastAPI app FIRST
 # ---------------------------------------------------------
 app = FastAPI()
+app.include_router(announcement_routes.router)
 
 # Signed cookie sessions, so the app knows who is logged in. Without this
 # the role checks in T1-013 have nobody to check against.

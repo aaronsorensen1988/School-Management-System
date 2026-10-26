@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Announcements</title>
+</head>
+<body>
+    <h1>School Announcements</h1>
+
+    {% if can_post %}
+        <a href="/announcements/new"><button>Create New Announcement</button></a>
+    {% endif %}
+
+    <hr>
+
+    <ul>
+        {% for announcement in announcements %}
+            <li>
+                <strong>{{ announcement.title }}</strong> 
+                <em>(To: {{ announcement.audience }} on {{ announcement.published_at.strftime('%b %d, %Y') }})</em>
+                <p>{{ announcement.body }}</p>
+            </li>
+        {% else %}
+            <p>No announcements to display.</p>
+        {% endfor %}
+    </ul>
+</body>
+</html>

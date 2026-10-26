@@ -11,6 +11,8 @@
 
     <p>Select a section:</p>
 
+    <button onclick="window.location.href='/announcements'">Announcements</button>
+
     {% if actor and actor.role == 'Parent' %}
         <!-- Parents only see this button -->
         <button onclick="window.location.href='/parent/portal'">Parent Portal</button>
