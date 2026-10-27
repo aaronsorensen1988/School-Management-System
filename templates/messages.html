@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Messages</title>
+</head>
+<body>
+    <h1>Messages</h1>
+
+    <h2>Your conversations</h2>
+    <ul>
+        {% for thread in threads %}
+            <li>
+                <a href="/messages/{{ thread.other_user.id }}/{{ thread.student.id }}">
+                    {{ thread.other_user.first_name }} {{ thread.other_user.last_name }}
+                </a>
+                about {{ thread.student.first_name }} {{ thread.student.last_name }}
+                <em>({{ thread.count }} message{{ '' if thread.count == 1 else 's' }},
+                    last {{ thread.last_sent_at.strftime('%b %d, %Y') }})</em>
+            </li>
+        {% else %}
+            <p>No conversations yet.</p>
+        {% endfor %}
+    </ul>
+
+    {% if contacts %}
+        <hr>
+        <h2>Start a conversation</h2>
+        <ul>
+            {% for contact in contacts %}
+                <li>
+                    <a href="/messages/{{ contact.other_user.id }}/{{ contact.student.id }}">
+                        {{ contact.other_user.first_name }} {{ contact.other_user.last_name }}
+                    </a>
+                    about {{ contact.student.first_name }} {{ contact.student.last_name }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <hr>
+    <button onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</body>
+</html>

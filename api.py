@@ -95,6 +95,10 @@ app.include_router(attendance_router)
 from presentation.report_card_routes import router as report_card_router
 app.include_router(report_card_router)
 
+# Teacher parent messaging (CNS-011 / T2-025). Own router for the same reason.
+from presentation.message_routes import router as message_router
+app.include_router(message_router)
+
 # ---------------------------------------------------------
 # Business logic service
 # ---------------------------------------------------------
