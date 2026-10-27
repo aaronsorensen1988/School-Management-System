@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from business_logic.uma.access_control import AccessControl
-from data_access.repositories.audit_repository import record
+from data_access.repositories.audit_repository import record, record_independent
 from database.audit import ALLOWED, CREATE, DENIED, LIST, VIEW
 from database.students import Student
 
@@ -93,17 +93,28 @@ class StudentRepository:
 
     # -- writes --------------------------------------------------------
 
-    def create(self, actor: Actor, **fields) -> Student:
-        """Add a student. Admins only."""
+    def authorize_create(self, actor: Actor) -> None:
+        """The permission half of create(), on its own. T2-036.
+
+        Split out so a caller can be refused before it bothers validating a
+        form. Otherwise someone who isn't allowed to enrol anyone still
+        learns which fields the form requires by submitting a bad one.
+        create() calls this too, so there is still one place that decides
+        and one place that logs the refusal.
+        """
         if not AccessControl.can_manage_students(actor.role):
             self._log(actor, CREATE, DENIED)
             raise AccessDenied(
                 f"{actor.role or 'anonymous'} user {actor.user_id} may not create students"
             )
+
+    def create(self, actor: Actor, **fields) -> Student:
+        """Add a student. Admins only."""
+        self.authorize_create(actor)
         student = Student(**fields)
         self.db.add(student)
         self.db.flush()
-        self._log(actor, CREATE, ALLOWED, student.id, commit=False)
+        self._log(actor, CREATE, ALLOWED, student.id, independent=False)
         return student
 
     # -- parent portal disclosures, T2-008 -----------------------------
@@ -129,16 +140,26 @@ class StudentRepository:
 
     # -- helpers -------------------------------------------------------
 
-    def _log(self, actor, action, outcome, resource_id=None, detail=None, commit=True):
-        """Record and commit straight away.
-
-        Has to commit, not flush. A denial ends in an exception and a
-        rolled back request, and a plain read never commits at all, so a
-        flushed row would be thrown away either way.
-        """
-        record(self.db, actor, action, "student", resource_id, outcome, detail)
-        if commit:
-            self.db.commit()
+    def _log(
+        self,
+        actor,
+        action,
+        outcome,
+        resource_id=None,
+        detail=None,
+        independent=True
+    ):
+        """Record an audit event without committing unrelated caller work."""
+        if independent:
+            record_independent(
+                self.db, actor, action, "student",
+                resource_id, outcome, detail
+            )
+        else:
+            record(
+                self.db, actor, action, "student",
+                resource_id, outcome, detail
+            )
 
     def _may_view(self, actor: Actor, student: Student) -> bool:
         # Sean's policy compares requester_id to student_id. a logged in

@@ -172,3 +172,26 @@ def test_admin_can_reach_the_add_student_form(client):
 def test_missing_student_is_404_not_403(client):
     client.post("/login", data={"username": "admin", "password": "correct-horse"})
     assert client.get("/ui/student/9999").status_code == 404
+
+
+# -- T2-037, the page actually has to say so -----------------------------
+
+def test_a_refused_profile_says_it_was_refused(client):
+    """The status code was already right. The page said "Student not found",
+    which told a refused user the record doesn't exist and told us nothing
+    when we looked at it."""
+    client.post("/login", data={"username": "jane", "password": "jane-pw"})
+    r = client.get("/ui/student/2")
+    assert r.status_code == 403
+    assert "Access denied" in r.text
+    assert "do not have access" in r.text
+    assert "Student not found" not in r.text
+
+
+def test_a_missing_student_still_says_not_found(client):
+    """The other half. Don't turn every 404 into a denial."""
+    client.post("/login", data={"username": "admin", "password": "correct-horse"})
+    r = client.get("/ui/student/9999")
+    assert r.status_code == 404
+    assert "Student not found" in r.text
+    assert "Access denied" not in r.text

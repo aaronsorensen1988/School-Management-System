@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grade Entry</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div style="max-width: 600px; margin: 40px auto; padding: 20px;">
+        <h2>Enter Student Grade</h2>
+
+        {% if error %}
+        <p class="error" style="color: red;">{{ error }} Nothing was saved.</p>
+        {% endif %}
+        
+        <form action="/grades/entry" method="POST">
+            <div style="margin-bottom: 15px;">
+                <label for="student_id">Student ID:</label><br>
+                <input type="number" id="student_id" name="student_id" value="{{ form.student_id if form else '' }}" required>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="assignment_id">Assignment ID:</label><br>
+                <input type="number" id="assignment_id" name="assignment_id" value="{{ form.assignment_id if form else '' }}" required>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label for="points_earned">Points Earned:</label><br>
+                <input type="number" id="points_earned" name="points_earned" step="0.01" min="0" value="{{ form.points_earned if form else '' }}" required>
+            </div>
+            
+            <button type="submit" style="padding: 8px 16px; background-color: #4CAF50; color: white; border: none; cursor: pointer;">Save Grade</button>
+        </form>
+        
+        <br>
+        <a href="/dashboard">Back to Dashboard</a>
+    </div>
+</body>
+</html>

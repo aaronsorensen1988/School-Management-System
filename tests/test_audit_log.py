@@ -6,7 +6,7 @@ denied one surviving the exception that follows it is the hard part.
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from data_access.repositories.student_repository import (
     ANONYMOUS,
@@ -185,13 +185,66 @@ def test_audit_log_does_not_commit_student_creation(db):
         guardian_email="parent@test.edu",
     )
 
-    # Simulate something later in the request failing.
     db.rollback()
 
-    student = (
+    assert (
         db.query(Student)
         .filter(Student.student_number == "S-ROLLBACK")
         .first()
+        is None
     )
 
-    assert student is None
+    # The create never succeeded, so neither should its audit entry.
+    assert not entries(db, action=CREATE)
+
+def test_audit_logging_does_not_commit_caller_transaction(tmp_path):
+    db_path = tmp_path / "audit_isolation.db"
+
+    engine = create_engine(
+        f"sqlite:///{db_path}",
+        connect_args={"check_same_thread": False},
+    )
+
+    Base.metadata.create_all(bind=engine)
+
+    TestSession = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+
+    with TestSession() as db:
+        pending = Student(
+            student_number="S-PENDING",
+            first_name="Pending",
+            last_name="Student",
+            grade_level=9,
+            date_of_birth="2011-01-01",
+            home_address="123 Test St",
+            guardian_name="Test Parent",
+            guardian_email="parent@test.edu",
+        )
+
+        db.add(pending)
+
+        repo = StudentRepository(db)
+
+        # This writes an audit record using its own session.
+        repo.list_visible(ADMIN)
+
+        # Roll back the caller's unrelated pending work.
+        db.rollback()
+
+        student = (
+            db.query(Student)
+            .filter(Student.student_number == "S-PENDING")
+            .first()
+        )
+
+        assert student is None
+
+        # The independently committed audit record should remain.
+        assert db.query(AccessLog).filter(
+            AccessLog.action == LIST,
+            AccessLog.outcome == ALLOWED,
+        ).count() == 1

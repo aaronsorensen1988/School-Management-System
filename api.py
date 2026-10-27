@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request, Form, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from presentation import announcement_routes
+
 
 # Database + ORM
 from sqlalchemy.orm import Session
@@ -56,6 +58,7 @@ from business_logic.amg.scheduling_service import scheduling_service, CapacityLi
 # Create FastAPI app FIRST
 # ---------------------------------------------------------
 app = FastAPI()
+app.include_router(announcement_routes.router)
 
 # Signed cookie sessions, so the app knows who is logged in. Without this
 # the role checks in T1-013 have nobody to check against.
@@ -82,6 +85,15 @@ templates.env.cache = None   # Fixes Jinja2 caching bug
 # other branches editing this file.
 from presentation.classes_routes import router as classes_router
 app.include_router(classes_router)
+# Grade Entry UI (T2-011)
+from presentation.grades_routes import router as grades_router
+app.include_router(grades_router)
+# Attendance page (SIEM-005 / T2-001, T2-004). Own router for the same reason.
+from presentation.attendance_routes import router as attendance_router
+app.include_router(attendance_router)
+# Report cards (AMG-009 / T2-016). Own router for the same reason.
+from presentation.report_card_routes import router as report_card_router
+app.include_router(report_card_router)
 
 # ---------------------------------------------------------
 # Business logic service
@@ -236,14 +248,18 @@ async def create_student(request: Request, db: Session = Depends(get_db)):
     actor = current_actor(request, db)
     if actor.role is None:
         return RedirectResponse("/login", status_code=302)
-    if actor.role != "Admin":
+
+    form = dict(await request.form())
+    try:
+        # T2-036. Goes through the repository now, so the create lands in
+        # the access log either way. The role check moved in there with it,
+        # which is why a refusal here is an exception rather than an if.
+        student_id, errors = student_service.create_student(db, actor, form)
+    except AccessDenied:
         logging.warning(
             f"Blocked student create by user {actor.user_id} (role {actor.role})"
         )
         return _denied(request, "Only administrators can enroll students.")
-
-    form = dict(await request.form())
-    student_id, errors = student_service.create_student(form)
 
     # Show the form again with the user's entries and error messages.
     if errors:

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Report Card</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body { height: auto; min-height: 100vh; padding: 30px 0; }
+        .login-container { width: 900px; max-width: 95%; text-align: left; }
+        .login-container h2, .login-container h3 { text-align: center; }
+        .sub { text-align: center; color: #555; margin-top: -6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        td.num, th.num { text-align: center; }
+        .letter { font-weight: bold; font-size: 1.1em; }
+        .none { color: #888; font-style: italic; }
+        .overall td { border-top: 2px solid #ccc; font-weight: bold; }
+        .note { color: #666; font-size: 0.9em; margin-top: 12px; }
+        a.view { color: #2e7d32; font-weight: bold; }
+        .secondary { background-color: #777; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Report Card</h2>
+
+    {% if message %}<p class="error">{{ message }}</p>{% endif %}
+
+    {% if report %}
+    <p class="sub"><strong>{{ student.name }}</strong> &middot; Generated {{ generated_on }}</p>
+
+    <h3>Grades</h3>
+    {% if report.classes %}
+    <table>
+        <tr>
+            <th>Course</th>
+            <th>Teacher</th>
+            <th class="num">Grade</th>
+            <th class="num">Letter</th>
+            <th class="num">Graded</th>
+        </tr>
+        {% for c in report.classes %}
+        <tr>
+            <td><strong>{{ c.course_code }}</strong> {{ c.course_name }}</td>
+            <td>{{ c.teacher_name or "Unassigned" }}</td>
+            {% if c.percent is not none %}
+            <td class="num">{{ "%.1f"|format(c.percent) }}%</td>
+            <td class="num letter">{{ c.letter }}</td>
+            {% else %}
+            <td class="num none" colspan="2">No grades yet</td>
+            {% endif %}
+            <td class="num">{{ c.graded }} of {{ c.assignments }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="overall">
+            <td colspan="2">Overall average</td>
+            {% if report.overall_percent is not none %}
+            <td class="num">{{ "%.1f"|format(report.overall_percent) }}%</td>
+            <td class="num letter">{{ report.overall_letter }}</td>
+            {% else %}
+            <td class="num none" colspan="2">No grades yet</td>
+            {% endif %}
+            <td></td>
+        </tr>
+    </table>
+    <p class="note">Class grades are points earned out of points possible on graded work. Work that hasn't been graded yet isn't counted. The overall average gives each class equal weight.</p>
+
+    <h3>Attendance</h3>
+    <table>
+        <tr>
+            <th>Course</th>
+            <th class="num">Present</th>
+            <th class="num">Absent</th>
+            <th class="num">Tardy</th>
+            <th class="num">Excused</th>
+        </tr>
+        {% for c in report.classes %}
+        <tr>
+            <td><strong>{{ c.course_code }}</strong> {{ c.course_name }}</td>
+            <td class="num">{{ c.attendance.present }}</td>
+            <td class="num">{{ c.attendance.absent }}</td>
+            <td class="num">{{ c.attendance.tardy }}</td>
+            <td class="num">{{ c.attendance.excused }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="overall">
+            <td>Total</td>
+            <td class="num">{{ report.attendance.present }}</td>
+            <td class="num">{{ report.attendance.absent }}</td>
+            <td class="num">{{ report.attendance.tardy }}</td>
+            <td class="num">{{ report.attendance.excused }}</td>
+        </tr>
+    </table>
+    {% else %}
+    <p class="none" style="text-align:center">Not enrolled in any classes yet.</p>
+    {% endif %}
+
+    {% if is_admin %}
+    <button class="secondary" onclick="window.location.href='/report-cards'">Back to Students</button>
+    {% endif %}
+
+    {% elif students %}
+    <p class="sub">Choose a student to view their report card.</p>
+    <table>
+        <tr><th>Student</th><th></th></tr>
+        {% for s in students %}
+        <tr>
+            <td>{{ s.name }}</td>
+            <td><a class="view" href="/report-cards/{{ s.id }}">View report card</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% elif not message %}
+    <p class="none" style="text-align:center">No students yet.</p>
+    {% endif %}
+
+    <button class="secondary" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</div>
+
+</body>
+</html>

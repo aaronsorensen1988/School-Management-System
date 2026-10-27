@@ -3,7 +3,7 @@ import os
 from database.database import Base, engine, SessionLocal
 from database.models import Role, User
 from database import models
-from database import scheduling  # noqa: F401  needs importing or create_all skips it
+from database import scheduling, parents  # noqa: F401  needs importing or create_all skips it
 
 # Login now checks the users table instead of a hardcoded account, so a
 # fresh database needs one admin or nobody can get in at all.
@@ -84,6 +84,7 @@ def init_db():
     from database import audit       # noqa: F401  T1-014
     from database import attendance  # noqa: F401  T2-002
     from database import grades      # noqa: F401  T2-012
+    from database import announcements  # noqa: F401  T2-023
 
     Base.metadata.create_all(bind=engine)
     seed_roles()

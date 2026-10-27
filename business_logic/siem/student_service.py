@@ -7,6 +7,7 @@ still apply no matter how data reaches the server.
 import re
 from datetime import date
 
+from data_access.repositories.student_repository import StudentRepository
 from database.database import SessionLocal
 from database.students import Student
 
@@ -98,38 +99,44 @@ def validate_student(form, today=None):
 class StudentService:
     """Saves and loads student profiles."""
 
-    def create_student(self, form):
-        """Validate and save a new student.
+    def create_student(self, db, actor, form):
+        """Validate and save a new student. T2-036.
 
         Returns (student_id, errors). student_id is None if anything failed.
+
+        Takes the caller's session and actor instead of opening its own.
+        That's the whole point of the change. This used to open a
+        SessionLocal and write the row itself, so a student added through
+        the web form never went near the repository and never appeared in
+        the access log. Nobody could tell who had enrolled anyone.
+
+        Raises AccessDenied if the actor isn't allowed to add students. The
+        repository decides that now rather than the route, so the refusal
+        gets logged too.
         """
+        # Permission first. A student submitting a half filled form should
+        # be told no, not told which fields are missing.
+        repo = StudentRepository(db)
+        repo.authorize_create(actor)
+
         cleaned, errors = validate_student(form)
         if errors:
             return None, errors
 
-        db = SessionLocal()
-        try:
-            existing = (
-                db.query(Student)
-                .filter(Student.student_number == cleaned["student_number"])
-                .first()
-            )
-            if existing is not None:
-                return None, {"student_number": "A student with this ID already exists."}
+        existing = (
+            db.query(Student)
+            .filter(Student.student_number == cleaned["student_number"])
+            .first()
+        )
+        if existing is not None:
+            return None, {"student_number": "A student with this ID already exists."}
 
-            student = Student(**cleaned)
-            db.add(student)
-            db.commit()
-            db.refresh(student)
-            return student.id, {}
-
-        except Exception:
-            # Prevent partial database changes if the save fails.
-            db.rollback()
-            raise
-
-        finally:
-            db.close()
+        # Raises AccessDenied, which the route turns into a 403. The audit
+        # row goes in alongside the student in this same transaction, so if
+        # the commit fails neither one survives.
+        student = repo.create(actor, **cleaned)
+        db.commit()
+        return student.id, {}
 
     def list_students(self):
         """Return every student, sorted by last name, for the Students page."""
