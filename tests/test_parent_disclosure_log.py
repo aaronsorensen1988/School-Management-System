@@ -17,6 +17,7 @@ from data_access.repositories.student_repository import Actor, StudentRepository
 from database.audit import ALLOWED, DENIED, LIST, VIEW, AccessLog
 from database.database import Base, get_db
 from database.models import Role, User
+from database.parents import ParentStudent
 from database.students import Student
 from security.keys import generate_key
 from utils.security import hash_password
@@ -138,7 +139,15 @@ def client(monkeypatch):
             User(username="tess", password_hash=hash_password("tess-pw"), first_name="Tess",
                  last_name="Teacher", email="tess@school.edu", role_id=teacher_role.id),
         ])
-        s.add(_student(student_number="S-001", first_name="Maya", last_name="Lopez"))
+        s.add_all([
+            _student(student_number="S-001", first_name="Maya", last_name="Lopez"),
+            _student(student_number="S-002", first_name="Owen", last_name="Nobody"),
+        ])
+        s.flush()
+
+        pat = s.query(User).filter(User.username == "pat").one()
+        maya = s.query(Student).filter(Student.student_number == "S-001").one()
+        s.add(ParentStudent(parent_user_id=pat.id, student_id=maya.id))
         s.commit()
 
     import api
@@ -183,27 +192,39 @@ def test_an_anonymous_visit_goes_to_login_and_logs_nothing(client):
 
 
 def test_a_parent_visit_is_recorded_as_a_list(client):
-    """What a parent is actually shown is covered at the repository level
-    above, because current_actor doesn't put child ids on the Actor yet.
-    See the note in test_a_parent_currently_sees_nothing."""
+    """The LIST row is the one the portal already wrote before T2-008. It
+    still gets written, the per child rows are on top of it."""
     client.post("/login", data={"username": "pat", "password": "pat-pw"})
     assert client.get("/parent/portal").status_code == 200
     assert _logs(client, action=LIST, actor_role="Parent")
 
 
-def test_a_parent_currently_sees_nothing(client):
-    """Not what we want, and not something T2-008 can fix.
-
-    current_actor builds the Actor from the session and never fills in
-    child_ids, because there's no parent to child table to fill them from.
-    So list_visible has nothing to match on and every parent gets an empty
-    portal. The T2-010 review flags the missing table as the first thing to
-    move into the database.
-
-    This test pins the current behaviour on purpose. When somebody adds the
-    link it will fail, which is the point. Replace it then with one that
-    asserts a parent sees their own child.
-    """
+def test_a_parent_sees_their_child_and_it_gets_logged(client):
+    """The whole chain. Pat logs in, the session turns into an Actor that
+    knows Maya is hers, the portal shows her, and the disclosure lands in
+    the log by student id."""
     client.post("/login", data={"username": "pat", "password": "pat-pw"})
-    client.get("/parent/portal")
-    assert _logs(client, action=VIEW, detail="parent portal") == []
+    body = client.get("/parent/portal").text
+
+    assert "Maya" in body
+
+    with client.session_factory() as d:
+        maya_id = d.query(Student).filter(Student.student_number == "S-001").one().id
+
+    rows = _logs(client, action=VIEW, detail="parent portal")
+    assert [r.resource_id for r in rows] == [maya_id]
+    assert rows[0].outcome == ALLOWED
+    assert rows[0].actor_role == "Parent"
+
+
+def test_a_parent_is_not_shown_somebody_elses_child(client):
+    client.post("/login", data={"username": "pat", "password": "pat-pw"})
+    body = client.get("/parent/portal").text
+
+    assert "Owen" not in body
+
+    with client.session_factory() as d:
+        owen_id = d.query(Student).filter(Student.student_number == "S-002").one().id
+
+    logged = [r.resource_id for r in _logs(client, action=VIEW, detail="parent portal")]
+    assert owen_id not in logged
