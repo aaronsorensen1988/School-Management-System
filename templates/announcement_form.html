@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>New Announcement</title>
+</head>
+<body>
+    <h1>Create Announcement</h1>
+    
+    <form action="/announcements/new" method="post">
+        <label>Title:</label><br>
+        <input type="text" name="title" required><br><br>
+        
+        <label>Audience:</label><br>
+        <select name="audience">
+            {% for aud in audiences %}
+                <option value="{{ aud }}">{{ aud | capitalize }}</option>
+            {% endfor %}
+        </select><br><br>
+        
+        <label>Message:</label><br>
+        <textarea name="body" rows="5" cols="40" required></textarea><br><br>
+        
+        <button type="submit">Post Announcement</button>
+    </form>
+    
+    <br>
+    <a href="/announcements">Cancel</a>
+</body>
+</html>
