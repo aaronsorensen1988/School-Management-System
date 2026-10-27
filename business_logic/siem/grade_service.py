@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from business_logic.siem.grade_validation import validate_points
 from business_logic.uma.access_control import AccessControl
 from database.grades import Assignment, Grade
 from database.scheduling import Enrollment
@@ -55,6 +56,9 @@ class GradeService:
             raise GradeAccessError(
                 "Grades may only be recorded for students enrolled in this section."
             )
+
+        # T2-014: check the score itself before anything is saved.
+        validate_points(points_earned, assignment.points_possible)
 
         grade = (
             db.query(Grade)
