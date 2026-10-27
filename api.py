@@ -91,6 +91,9 @@ app.include_router(grades_router)
 # Attendance page (SIEM-005 / T2-001, T2-004). Own router for the same reason.
 from presentation.attendance_routes import router as attendance_router
 app.include_router(attendance_router)
+# Report cards (AMG-009 / T2-016). Own router for the same reason.
+from presentation.report_card_routes import router as report_card_router
+app.include_router(report_card_router)
 
 # ---------------------------------------------------------
 # Business logic service
