@@ -54,7 +54,11 @@ class AccessControl:
     def can_post_announcement(role):
         """Only school staff may create or publish announcements."""
         return role in ("Admin", "Teacher")
-        
+
+    @staticmethod
+    def can_send_emergency_notification(role):
+        """Only administrators may send emergency notification."""
+        return role == "Admin"
 
     @staticmethod
     def can_record_grade(role, requester_id, teacher_id):
