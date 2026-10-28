@@ -43,7 +43,7 @@
     {% for alert, receipt in alerts %}
     <div class="alert {% if not receipt.read_at %}unread{% endif %}">
         <h4>{{ alert.title }}</h4>
-        <div class="meta">Sent {{ alert.sent_at.strftime("%b %d, %Y %I:%M %p") }} to {{ audience_labels.get(alert.audience, alert.audience) }}</div>
+        <div class="meta">Sent {{ alert.sent_at|local_time }} to {{ audience_labels.get(alert.audience, alert.audience) }}</div>
         <div class="body">{{ alert.message }}</div>
         {% if receipt.read_at %}
         <span class="read-tag">Read</span>
@@ -91,7 +91,7 @@
             <tr>
                 <td>{{ row.alert.title }}</td>
                 <td>{{ audience_labels.get(row.alert.audience, row.alert.audience) }}</td>
-                <td>{{ row.alert.sent_at.strftime("%b %d, %I:%M %p") }}</td>
+                <td>{{ row.alert.sent_at|local_time("%b %d, %I:%M %p") }}</td>
                 <td>{{ row.read }} of {{ row.total }}</td>
             </tr>
             {% endfor %}

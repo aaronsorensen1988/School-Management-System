@@ -11,6 +11,7 @@ Own router, same as the other pages, so api.py only needs one include line.
 """
 
 import logging
+from datetime import timezone
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -26,6 +27,22 @@ from database.database import get_db
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.cache = None
+
+
+def local_time(value, fmt="%b %d, %Y %I:%M %p"):
+    """Show a saved time in the server's local time zone.
+
+    Times are saved in UTC. SQLite hands them back without a time zone, so
+    without this an alert sent at 7:53 PM Pacific showed as 02:53 AM.
+    """
+    if value is None:
+        return ""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone().strftime(fmt)
+
+
+templates.env.filters["local_time"] = local_time
 
 NOTICES = {"sent": "Emergency alert sent."}
 

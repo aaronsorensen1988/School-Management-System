@@ -229,3 +229,14 @@ def test_parent_does_not_get_a_students_only_alert(client):
     _login(client, "pat", "pat-pw")
     assert "No emergency alerts." in client.get("/emergency").text
     assert "unread emergency alert" not in client.get("/dashboard").text
+
+
+def test_sent_time_is_shown_in_local_time():
+    """Saved as UTC, shown in the server's time zone (it showed 02:53 AM for a 7:53 PM alert)."""
+    from datetime import datetime, timezone
+    from presentation.emergency_routes import local_time
+    utc = datetime(2026, 10, 28, 2, 53)                          # how SQLite hands it back: no time zone
+    expected = utc.replace(tzinfo=timezone.utc).astimezone().strftime("%b %d, %Y %I:%M %p")
+    assert local_time(utc) == expected
+    assert local_time(utc.replace(tzinfo=timezone.utc)) == expected
+    assert local_time(None) == ""
