@@ -94,6 +94,10 @@ app.include_router(attendance_router)
 # Report cards (AMG-009 / T2-016). Own router for the same reason.
 from presentation.report_card_routes import router as report_card_router
 app.include_router(report_card_router)
+# Emergency alerts (CNS-012 / T2-030, T2-031). Own router for the same reason.
+from presentation.emergency_routes import router as emergency_router
+from business_logic.siem.emergency_service import unread_count as emergency_unread_count
+app.include_router(emergency_router)
 
 # ---------------------------------------------------------
 # Business logic service
@@ -147,7 +151,12 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
     if actor.role is None:
         return RedirectResponse("/login", status_code=302)
     # Passing "actor" to the template so it can check roles!
-    return templates.TemplateResponse(request, "dashboard.html", {"request": request, "actor": actor})
+    # emergency_unread drives the red banner (CNS-012 / T2-030).
+    return templates.TemplateResponse(request, "dashboard.html", {
+        "request": request,
+        "actor": actor,
+        "emergency_unread": emergency_unread_count(db, actor.user_id),
+    })
 
 # ---------------------------------------------------------
 # STUDENTS PAGE

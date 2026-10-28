@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emergency Alerts</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body { height: auto; min-height: 100vh; padding: 30px 0; }
+        .login-container { width: 900px; max-width: 95%; text-align: left; }
+        .login-container h2, .login-container h3 { text-align: center; }
+        .notice { color: #2e7d32; font-weight: bold; text-align: center; }
+        .alert { border: 1px solid #ddd; border-radius: 6px; padding: 12px 14px; margin: 10px 0; }
+        .alert.unread { border: 2px solid #c62828; background: #fff5f5; }
+        .alert h4 { margin: 0 0 4px; }
+        .alert .meta { color: #666; font-size: 0.85em; margin-bottom: 8px; }
+        .alert .body { white-space: pre-wrap; }
+        .alert form { margin-top: 8px; }
+        .alert button { width: auto; padding: 6px 12px; margin: 0; }
+        .read-tag { color: #2e7d32; font-size: 0.85em; }
+        .none { color: #888; font-style: italic; text-align: center; }
+        .panel { border-top: 1px solid #ddd; margin-top: 25px; padding-top: 10px; }
+        label { display: block; font-weight: bold; margin-top: 10px; }
+        select, textarea {
+            width: 100%; padding: 10px; margin: 6px 0; border-radius: 5px;
+            border: 1px solid #ccc; box-sizing: border-box; font-family: inherit;
+        }
+        textarea { min-height: 110px; }
+        .field-error { color: red; font-size: 0.9em; margin: 2px 0 6px; }
+        .send { background-color: #c62828; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #eee; }
+        .secondary { background-color: #777; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+    <h2>Emergency Alerts</h2>
+
+    {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+    {% if message %}<p class="error">{{ message }}</p>{% endif %}
+
+    <h3>Your alerts</h3>
+    {% for alert, receipt in alerts %}
+    <div class="alert {% if not receipt.read_at %}unread{% endif %}">
+        <h4>{{ alert.title }}</h4>
+        <div class="meta">Sent {{ alert.sent_at.strftime("%b %d, %Y %I:%M %p") }} to {{ audience_labels.get(alert.audience, alert.audience) }}</div>
+        <div class="body">{{ alert.message }}</div>
+        {% if receipt.read_at %}
+        <span class="read-tag">Read</span>
+        {% else %}
+        <form method="post" action="/emergency/{{ alert.id }}/read">
+            <button type="submit">Mark as read</button>
+        </form>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="none">No emergency alerts.</p>
+    {% endfor %}
+
+    {% if is_admin %}
+    <div class="panel">
+        <h3>Send an Emergency Alert</h3>
+        <form method="post" action="/emergency" novalidate>
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" maxlength="{{ title_max }}" value="{{ form.title or '' }}" placeholder="e.g. Early dismissal today">
+            {% if errors.title %}<p class="field-error">{{ errors.title }}</p>{% endif %}
+
+            <label for="message">Message</label>
+            <textarea id="message" name="message" maxlength="{{ message_max }}">{{ form.message or '' }}</textarea>
+            {% if errors.message %}<p class="field-error">{{ errors.message }}</p>{% endif %}
+
+            <label for="audience">Send to</label>
+            <select id="audience" name="audience">
+                <option value="">Choose who receives it</option>
+                {% for value, label in audiences %}
+                <option value="{{ value }}" {% if form.audience == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            {% if errors.audience %}<p class="field-error">{{ errors.audience }}</p>{% endif %}
+
+            <button type="submit" class="send">Send Alert</button>
+        </form>
+    </div>
+
+    <div class="panel">
+        <h3>Sent alerts</h3>
+        {% if history %}
+        <table>
+            <tr><th>Title</th><th>Sent to</th><th>Sent</th><th>Read</th></tr>
+            {% for row in history %}
+            <tr>
+                <td>{{ row.alert.title }}</td>
+                <td>{{ audience_labels.get(row.alert.audience, row.alert.audience) }}</td>
+                <td>{{ row.alert.sent_at.strftime("%b %d, %I:%M %p") }}</td>
+                <td>{{ row.read }} of {{ row.total }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p class="none">No alerts sent yet.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <button class="secondary" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</div>
+
+</body>
+</html>
