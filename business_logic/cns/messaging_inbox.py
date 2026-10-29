@@ -46,33 +46,24 @@ def _teacher_contacts(db: Session, teacher_id: int):
     return rows
 
 
-def _parent_contacts(db: Session, parent_user_id: int):
-    """Teachers of this parent's children."""
-    rows = (
-        db.query(User, Student)
-        .join(Section, Section.teacher_id == User.id)
-        .join(Enrollment, Enrollment.section_id == Section.id)
-        .join(Student, Student.user_id == Enrollment.student_id)
-        .join(ParentStudent, ParentStudent.student_id == Student.id)
-        .filter(ParentStudent.parent_user_id == parent_user_id)
-        .all()
-    )
-    return rows
-
-
 def contacts_for(db: Session, actor) -> list[Contact]:
     """Everyone this actor may start a conversation with, one entry per
-    student. Anybody who isn't a teacher or a parent gets an empty list
-    instead of an error, because the page decides what to do about that."""
-    if actor.user_id is None:
+    student.
+
+    Only teachers get anything back. CNS-011 has the teacher opening the
+    conversation and the parent replying, so send_message refuses a parent's
+    first message. Offering a parent somebody to write to would be offering
+    a button that always returns 403, which is what Sean caught in review.
+    A parent's legitimate threads all started with a teacher, so they're
+    already in threads_for by definition.
+
+    Anybody who isn't a teacher gets an empty list instead of an error,
+    because the page decides what to do about that.
+    """
+    if actor.user_id is None or actor.role != "Teacher":
         return []
 
-    if actor.role == "Teacher":
-        rows = _teacher_contacts(db, actor.user_id)
-    elif actor.role == "Parent":
-        rows = _parent_contacts(db, actor.user_id)
-    else:
-        return []
+    rows = _teacher_contacts(db, actor.user_id)
 
     # A student in two of the same teacher's sections comes back twice.
     seen = {}
@@ -83,6 +74,22 @@ def contacts_for(db: Session, actor) -> list[Contact]:
         seen.values(),
         key=lambda c: (c.student.last_name, c.student.first_name, c.other_user.last_name),
     )
+
+
+def may_send(actor, other_user_id: int, messages) -> bool:
+    """Whether the page should show this actor a send box.
+
+    Mirrors the rule in MessagingService.send_message: a teacher may open a
+    conversation, a parent may only reply to one. Opening the thread itself
+    is allowed either way, which is why the GET succeeds and the POST is
+    what refuses. Rendering a form that can only 403 is the same mismatch
+    Sean found on the inbox, one page further in.
+    """
+    if actor.role == "Teacher":
+        return True
+    if actor.role == "Parent":
+        return any(m.sender_id == other_user_id for m in messages)
+    return False
 
 
 def threads_for(db: Session, actor) -> list[Thread]:

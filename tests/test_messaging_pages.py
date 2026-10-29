@@ -9,6 +9,7 @@ One file for two tasks because the fixture is most of the work. Pages are in
 the first section, audit rows in the second.
 """
 
+import re
 from datetime import time
 
 import pytest
@@ -220,20 +221,85 @@ def test_each_teacher_sees_only_their_own_classroom(client):
     assert "Pat" not in body
 
 
-def test_a_parent_sees_only_their_own_childs_teacher(client):
+def test_a_parent_is_not_offered_a_conversation_to_start(client):
+    """Sean caught this in review. The inbox used to list the child's
+    teacher under "start a conversation", but send_message refuses a
+    parent's first message, so the link was a 403 with extra steps."""
+    login(client, "pat")
+    body = client.get("/messages").text
+
+    assert "Start a conversation" not in body
+    assert "teachers start these conversations" in body.lower()
+
+
+def test_a_parent_sees_the_teacher_once_the_teacher_writes(client):
+    login(client, "ann")
+    send(client, client.ids["pat"], client.ids["jane"], "Jane did well today.")
+    client.get("/logout")
+
     login(client, "pat")
     body = client.get("/messages").text
     assert "Ann" in body
     assert "Bob" not in body
 
 
-def test_the_other_parent_sees_the_other_teacher(client):
-    """The mirror of the test above. Without it a lookup that ignores which
-    parent is asking still passes, because Pat would see Ann either way."""
-    login(client, "quinn")
+def test_a_parent_does_not_see_another_parents_thread(client):
+    login(client, "bob")
+    send(client, client.ids["quinn"], client.ids["theo"], "About Theo.")
+    client.get("/logout")
+
+    login(client, "pat")
     body = client.get("/messages").text
-    assert "Bob" in body
-    assert "Ann" not in body
+    assert "Quinn" not in body
+    assert "Theo" not in body
+
+
+def test_nothing_the_inbox_offers_ends_in_a_refusal(client):
+    """The general form of Sean's bug. Whatever the page links to has to be
+    something the service will actually allow. Walk every link the inbox
+    renders, for every role, and make sure none of them come back 403.
+
+    quinn is the case that matters most. She's a parent nobody has written
+    to yet, which is exactly the state where the page used to offer a link
+    that could only fail.
+    """
+    login(client, "ann")
+    send(client, client.ids["pat"], client.ids["jane"], "Jane did well today.")
+    client.get("/logout")
+
+    # Parents first on purpose. The check below posts a message, and a
+    # teacher's post would give the parent a reply right to test with,
+    # hiding the exact case this is here to catch. Teachers may always
+    # send, so going after the parents can't flatter them.
+    checked = 0
+    for who in ("quinn", "pat", "ann", "bob"):
+        login(client, who)
+        body = client.get("/messages").text
+        for link in set(re.findall(r'href="(/messages/\d+/\d+)"', body)):
+            page = client.get(link)
+            assert page.status_code == 200, f"{who} was offered {link}"
+            checked += 1
+
+            # A send box on the page is a promise the post will work.
+            if "<textarea" in page.text:
+                posted = client.post(link, data={"body": "checking the form works"})
+                assert posted.status_code == 303, f"{who} got a dead form on {link}"
+        client.get("/logout")
+
+    # Guards the loop itself. If the page stopped rendering links entirely
+    # every assertion above would pass without testing anything.
+    assert checked >= 3
+
+
+def test_a_parent_with_no_messages_gets_no_send_box(client):
+    """Reaching the thread by typing the URL is allowed, the service lets
+    anyone in the pair open it. Showing a form that can only 403 is not."""
+    login(client, "quinn")
+    page = client.get(f"/messages/{client.ids['bob']}/{client.ids['theo']}")
+
+    assert page.status_code == 200
+    assert "<textarea" not in page.text
+    assert "once bob writes to you" in page.text.lower()
 
 
 def test_a_teacher_can_start_a_conversation(client):

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from auth.session import current_actor
 from business_logic.cns import messaging_audit
-from business_logic.cns.messaging_inbox import contacts_for, threads_for
+from business_logic.cns.messaging_inbox import contacts_for, may_send, threads_for
 from business_logic.cns.messaging_service import (
     MessagingAccessError,
     MessagingNotFoundError,
@@ -66,6 +66,9 @@ def inbox(request: Request, db: Session = Depends(get_db)):
                 c for c in contacts_for(db, actor)
                 if (c.other_user.id, c.student.id) not in existing
             ],
+            # Parents can't open a conversation, so the page says so instead
+            # of leaving an empty space that looks like a bug.
+            "is_parent": actor.role == "Parent",
         },
     )
 
@@ -154,6 +157,7 @@ def _render_thread(request, db, actor, other_user_id, student_id, error=None, st
             "other_user": other_user,
             "student": student,
             "me": actor.user_id,
+            "can_send": may_send(actor, other_user_id, messages),
             "error": error,
         },
         status_code=status,
