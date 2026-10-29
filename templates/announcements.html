@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
     <title>Announcements</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <h1>School Announcements</h1>
+
+<div class="login-container">
+    <h2>School Announcements</h2>
 
     {% if can_post %}
         <a href="/announcements/new"><button>Create New Announcement</button></a>
@@ -23,5 +26,10 @@
             <p>No announcements to display.</p>
         {% endfor %}
     </ul>
+
+    <br>
+    <button onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+</div>
+
 </body>
 </html>
