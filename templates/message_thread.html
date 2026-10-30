@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Conversation</title>
+</head>
+<body>
+    <h1>{{ other_user.first_name }} {{ other_user.last_name }}</h1>
+    <p>About {{ student.first_name }} {{ student.last_name }}</p>
+
+    {% if error %}
+        <p><strong>{{ error }}</strong></p>
+    {% endif %}
+
+    <hr>
+
+    <ul>
+        {% for message in messages %}
+            <li>
+                <strong>{{ 'You' if message.sender_id == me else other_user.first_name }}</strong>
+                <em>{{ message.sent_at.strftime('%b %d, %Y %I:%M %p') }}</em>
+                <p>{{ message.body }}</p>
+            </li>
+        {% else %}
+            <p>Nothing here yet. Send the first message.</p>
+        {% endfor %}
+    </ul>
+
+    <hr>
+
+    {% if can_send %}
+        <form method="post" action="/messages/{{ other_user.id }}/{{ student.id }}">
+            <textarea name="body" rows="4" cols="60" required></textarea>
+            <br>
+            <button type="submit">Send</button>
+        </form>
+    {% else %}
+        <p>You can reply here once {{ other_user.first_name }} writes to you.</p>
+    {% endif %}
+
+    <hr>
+    <button onclick="window.location.href='/messages'">Back to Messages</button>
+</body>
+</html>
