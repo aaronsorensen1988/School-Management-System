@@ -453,3 +453,23 @@ def test_anonymous_gets_nothing_logged(client):
     client.get(f"/messages/{client.ids['ann']}/{client.ids['jane']}")
 
     assert logs(client, resource_type="message_thread") == []
+
+
+# -- getting there from the dashboard ------------------------------------
+
+def test_the_dashboard_offers_messages_to_the_people_who_can_use_it(client):
+    """Sean caught that /messages had no button anywhere, so the only way in
+    was typing the URL. Same shape as the bug he found inside the pages, a
+    gap between what the UI shows and what the backend allows, just the
+    other way round."""
+    for who in ("ann", "pat"):
+        login(client, who)
+        assert '/messages' in client.get("/dashboard").text, f"{who} had no way in"
+        client.get("/logout")
+
+
+def test_the_dashboard_hides_messages_from_everyone_else(client):
+    """An admin clicking it would get a 403, so the button shouldn't be
+    there in the first place."""
+    login(client, "admin")
+    assert "/messages" not in client.get("/dashboard").text

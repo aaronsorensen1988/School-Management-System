@@ -13,6 +13,12 @@
 
     <button onclick="window.location.href='/announcements'">Announcements</button>
 
+    {% if actor and actor.role in ['Teacher', 'Parent'] %}
+        <!-- CNS-011 / T2-025. Only these two roles, everybody else gets a 403
+             on /messages, so a button for them would promise nothing. -->
+        <button onclick="window.location.href='/messages'">Messages</button>
+    {% endif %}
+
     {% if actor and actor.role == 'Parent' %}
         <!-- Parents only see this button -->
         <button onclick="window.location.href='/parent/portal'">Parent Portal</button>
