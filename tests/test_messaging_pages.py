@@ -291,6 +291,24 @@ def test_nothing_the_inbox_offers_ends_in_a_refusal(client):
     assert checked >= 3
 
 
+def test_both_pages_carry_the_privacy_notice(client):
+    """T2-028. Same wording style as the parent portal notice, and it says
+    out loud that messages are logged and permanent. A notice that leaves
+    out the part people would object to isn't doing its job."""
+    login(client, "ann")
+    send(client, client.ids["pat"], client.ids["jane"], "Jane did well today.")
+
+    inbox = client.get("/messages").text
+    thread = client.get(f"/messages/{client.ids['pat']}/{client.ids['jane']}").text
+
+    for page in (inbox, thread):
+        assert "Privacy Notice" in page
+        assert "FERPA" in page
+        assert "records who sent each one" in page
+
+    assert "cannot be edited or deleted" in thread
+
+
 def test_a_parent_with_no_messages_gets_no_send_box(client):
     """Reaching the thread by typing the URL is allowed, the service lets
     anyone in the pair open it. Showing a form that can only 403 is not."""

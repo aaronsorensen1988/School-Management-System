@@ -7,6 +7,10 @@
     <h1>{{ other_user.first_name }} {{ other_user.last_name }}</h1>
     <p>About {{ student.first_name }} {{ student.last_name }}</p>
 
+    <p style="font-size: 0.9em; color: #555; background-color: #eee; padding: 10px; border-radius: 5px;">
+        <strong>Privacy Notice:</strong> This conversation may contain academic and attendance information about a student, which is protected by FERPA. Please keep it confidential and log out when you are finished. Messages cannot be edited or deleted once sent, and the school records who sent each one and when.
+    </p>
+
     {% if error %}
         <p><strong>{{ error }}</strong></p>
     {% endif %}
