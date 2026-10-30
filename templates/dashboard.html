@@ -9,6 +9,13 @@
 <div class="login-container">
     <h2>Welcome to the Dashboard</h2>
 
+    {% if emergency_unread %}
+    <!-- CNS-012 / T2-030: shows until every alert is marked read -->
+    <a href="/emergency" style="display:block; background:#c62828; color:#fff; padding:12px; border-radius:6px; margin-bottom:12px; text-align:center; font-weight:bold; text-decoration:none;">
+        You have {{ emergency_unread }} unread emergency alert{{ "s" if emergency_unread != 1 }}. Tap to read.
+    </a>
+    {% endif %}
+
     <p>Select a section:</p>
 
     <button onclick="window.location.href='/announcements'">Announcements</button>
@@ -28,6 +35,7 @@
         <button onclick="window.location.href='/teachers'">Teachers</button>
         <button onclick="window.location.href='/classes'">Classes</button>
     {% endif %}
+    <button onclick="window.location.href='/emergency'">Emergency Alerts</button>
 </div>
 
 </body>
