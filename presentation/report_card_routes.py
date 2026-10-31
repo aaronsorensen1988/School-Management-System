@@ -29,18 +29,32 @@ from auth.session import current_actor
 from business_logic.amg.grade_aggregation import student_report
 from database.database import get_db
 from database.models import Role, User
+from database.parents import ParentStudent
+from database.students import Student
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 templates.env.cache = None
 
 
-def can_view_report_card(actor, student_user_id):
-    """Admins see any report card, students only their own."""
+def can_view_report_card(actor, student_user_id, db: Session):
+    """Admins see any report card, students only their own, parents only their children."""
     if actor.role == "Admin":
         return True
     if actor.role == "Student":
         return actor.user_id == student_user_id
+    if actor.role == "Parent":
+        # Check if the parent user is linked to the student user
+        link = (
+            db.query(ParentStudent)
+            .join(Student, Student.id == ParentStudent.student_id)
+            .filter(
+                ParentStudent.parent_user_id == actor.user_id,
+                Student.user_id == student_user_id
+            )
+            .first()
+        )
+        return link is not None
     return False
 
 
@@ -65,13 +79,30 @@ def report_cards_home(request: Request, db: Session = Depends(get_db)):
     actor = current_actor(request, db)
     if actor.role is None:
         return RedirectResponse("/login", status_code=302)
+    
     if actor.role == "Student":
         return RedirectResponse(f"/report-cards/{actor.user_id}", status_code=302)
-    if actor.role != "Admin":
+    
+    if actor.role not in ("Admin", "Parent"):
         logging.warning(f"Blocked report card list by user {actor.user_id} (role {actor.role})")
-        return _render(request, {"message": "Report cards are only available to administrators and students."},
+        return _render(request, {"message": "Report cards are only available to administrators, parents, and students."},
                        status_code=403)
-    students = [{"id": s.id, "name": f"{s.first_name} {s.last_name}"} for s in _students(db)]
+    
+    if actor.role == "Admin":
+        students = [{"id": s.id, "name": f"{s.first_name} {s.last_name}"} for s in _students(db)]
+    else:  # Parent
+        linked_students = (
+            db.query(User)
+            .join(Student, Student.user_id == User.id)
+            .join(ParentStudent, ParentStudent.student_id == Student.id)
+            .filter(ParentStudent.parent_user_id == actor.user_id)
+            .all()
+        )
+        students = [{"id": s.id, "name": f"{s.first_name} {s.last_name}"} for s in linked_students]
+        
+        if len(students) == 1:
+            return RedirectResponse(f"/report-cards/{students[0]['id']}", status_code=302)
+
     return _render(request, {"students": students})
 
 
@@ -83,7 +114,7 @@ def report_card(student_id: int, request: Request, db: Session = Depends(get_db)
 
     # Check permission before looking the student up, so someone without
     # access can't tell which ids belong to real students.
-    if not can_view_report_card(actor, student_id):
+    if not can_view_report_card(actor, student_id, db):
         logging.warning(f"Blocked report card view by user {actor.user_id} (role {actor.role}) for student {student_id}")
         return _render(request, {"message": "You can only view your own report card."}, status_code=403)
 

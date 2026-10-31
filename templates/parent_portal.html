@@ -31,6 +31,10 @@
                 <button onclick="window.location.href='/ui/student/{{ child.id }}'">
                     View Records
                 </button>
+                <!-- Added View Report Card button -->
+                <button style="margin-left: 5px;" onclick="window.location.href='/report-cards/{{ child.id }}'">
+                    Report Card
+                </button>
             </td>
         </tr>
         {% else %}
