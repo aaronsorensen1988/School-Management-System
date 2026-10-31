@@ -14,6 +14,7 @@ from business_logic.siem import emergency_service
 from business_logic.siem.emergency_service import EmergencyAccessError
 from database import announcements, attendance, audit, grades, parents, scheduling, students  # noqa: F401
 from database.database import Base, get_db
+from database.audit import ALLOWED, CREATE, DENIED, AccessLog
 from database.emergency import EmergencyNotification, EmergencyReceipt
 from database.models import Role, User
 from security.keys import generate_key
@@ -92,6 +93,44 @@ def test_only_admins_can_send(db, username):
     with pytest.raises(EmergencyAccessError):
         emergency_service.send_emergency(db, _actor(db, username), GOOD)
     assert db.query(EmergencyNotification).count() == 0
+
+
+def test_send_is_logged_with_the_alert(db):
+    """T2-032: one CREATE row per alert, pointing at the alert it describes."""
+    admin = _actor(db, "admin")
+    alert, _ = emergency_service.send_emergency(db, admin, {**GOOD, "audience": "students"})
+    row = db.query(AccessLog).filter_by(resource_type="emergency_notification").one()
+    assert (row.action, row.outcome) == (CREATE, ALLOWED)
+    assert row.resource_id == alert.id
+    assert row.actor_user_id == admin.user_id
+    assert "3 recipients" in row.detail
+
+
+def test_refused_send_is_logged(db):
+    """T2-032: a non-admin's attempt leaves a DENIED row even though nothing is sent."""
+    with pytest.raises(EmergencyAccessError):
+        emergency_service.send_emergency(db, _actor(db, "jane"), GOOD)
+    row = db.query(AccessLog).filter_by(resource_type="emergency_notification").one()
+    assert row.outcome == DENIED
+    assert row.actor_role == "Student"
+    assert db.query(EmergencyNotification).count() == 0
+
+
+def test_bad_alert_logs_nothing(db):
+    emergency_service.send_emergency(db, _actor(db, "admin"), {"title": "", "message": "", "audience": ""})
+    assert db.query(AccessLog).count() == 0
+
+
+def test_alert_receipts_and_log_save_together(db, monkeypatch):
+    """If anything fails before the save, none of it is kept: no half-sent alert."""
+    def boom(*args, **kwargs):
+        raise RuntimeError("database went away")
+    monkeypatch.setattr(emergency_service, "record", boom)
+    with pytest.raises(RuntimeError):
+        emergency_service.send_emergency(db, _actor(db, "admin"), GOOD)
+    db.rollback()
+    assert db.query(EmergencyNotification).count() == 0
+    assert db.query(EmergencyReceipt).count() == 0
 
 
 def test_bad_alert_saves_nothing(db):
