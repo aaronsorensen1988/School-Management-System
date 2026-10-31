@@ -16,6 +16,8 @@ from business_logic.uma.access_control import AccessControl
 from database.announcements import AUDIENCE_ROLES, AUDIENCES
 from database.emergency import EmergencyNotification, EmergencyReceipt
 from database.models import Role, User
+from data_access.repositories.audit_repository import record, record_independent
+from database.audit import ALLOWED, CREATE, DENIED, LIST, VIEW
 
 TITLE_MAX = 100
 MESSAGE_MAX = 1000
@@ -93,9 +95,17 @@ def send_emergency(db: Session, actor, form):
     db.flush()
     for person in people:
         db.add(EmergencyReceipt(notification_id=alert.id, user_id=person.id))
-    db.commit()
-    db.refresh(alert)
+        db.commit()
+        db.refresh(alert)
     # T2-032: log the send (who, audience, how many) here.
+    record_independent(
+        db,
+        actor=actor,
+        action=CREATE,
+        resource_type="emergency_notification",
+        outcome="allowed",
+        detail=f"Broadcasted emergency alert '{alert.title}' to audience '{alert.audience}' ({len(people)} recipients)"
+    )
     return alert, {}
 
 
