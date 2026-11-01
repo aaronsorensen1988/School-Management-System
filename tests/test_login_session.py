@@ -174,6 +174,28 @@ def test_missing_student_is_404_not_403(client):
     assert client.get("/ui/student/9999").status_code == 404
 
 
+def test_admin_is_offered_add_student(client):
+    client.post(
+        "/login",
+        data={"username": "admin", "password": "correct-horse"},
+    )
+    body = client.get("/students").text
+
+    assert "Add Student" in body
+    assert "/students/new" in body
+
+
+def test_non_admin_is_not_offered_add_student(client):
+    client.post(
+        "/login",
+        data={"username": "jane", "password": "jane-pw"},
+    )
+    body = client.get("/students").text
+
+    assert "Add Student" not in body
+    assert "/students/new" not in body
+
+
 # -- T2-037, the page actually has to say so -----------------------------
 
 def test_a_refused_profile_says_it_was_refused(client):

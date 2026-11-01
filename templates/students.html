@@ -30,13 +30,21 @@
         </tr>
         {% else %}
         <tr>
-            <td colspan="4">No students yet. Click "Add Student" to enroll the first one.</td>
+            <td colspan="4">
+                {% if actor and actor.role == 'Admin' %}
+                    No students yet. Click "Add Student" to enroll the first one.
+                {% else %}
+                    No students available.
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </table>
 
+    {% if actor and actor.role == 'Admin' %}
     <br>
     <button onclick="window.location.href='/students/new'">Add Student</button>
+    {% endif %}
 
     <br>
     <button onclick="window.location.href='/dashboard'">Back to Dashboard</button>
