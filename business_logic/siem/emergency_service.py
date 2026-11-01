@@ -16,6 +16,8 @@ from business_logic.uma.access_control import AccessControl
 from database.announcements import AUDIENCE_ROLES, AUDIENCES
 from database.emergency import EmergencyNotification, EmergencyReceipt
 from database.models import Role, User
+from data_access.repositories.audit_repository import record, record_independent
+from database.audit import ALLOWED, CREATE, DENIED
 
 TITLE_MAX = 100
 MESSAGE_MAX = 1000
@@ -74,7 +76,16 @@ def send_emergency(db: Session, actor, form):
     Nothing is saved if there are errors.
     """
     if not AccessControl.can_send_emergency_notification(actor.role):
-        # T2-032: log the refused attempt here.
+        # T2-032: a refused attempt has nothing else to save, so it gets
+        # its own session and is kept even though nothing is sent.
+        record_independent(
+            db,
+            actor=actor,
+            action=CREATE,
+            resource_type="emergency_notification",
+            outcome=DENIED,
+            detail="Refused emergency alert: only administrators can send",
+        )
         raise EmergencyAccessError("Only administrators can send emergency notifications.")
 
     values, errors = check_alert(form)
@@ -93,9 +104,21 @@ def send_emergency(db: Session, actor, form):
     db.flush()
     for person in people:
         db.add(EmergencyReceipt(notification_id=alert.id, user_id=person.id))
+
+    # T2-032: log the send in the same transaction, so the alert, every
+    # receipt and the log row are saved together or not at all. An alert
+    # is never half sent, and never sent without a record of it.
+    record(
+        db,
+        actor=actor,
+        action=CREATE,
+        resource_type="emergency_notification",
+        resource_id=alert.id,
+        outcome=ALLOWED,
+        detail=f"Broadcasted emergency alert '{alert.title}' to audience '{alert.audience}' ({len(people)} recipients)",
+    )
     db.commit()
     db.refresh(alert)
-    # T2-032: log the send (who, audience, how many) here.
     return alert, {}
 
 
