@@ -129,7 +129,17 @@
     <p class="none" style="text-align:center">No students yet.</p>
     {% endif %}
 
-    <button class="secondary no-print" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+    {% if is_parent %}
+        <button class="secondary no-print"
+                onclick="window.location.href='/parent/portal'">
+            Back to Parent Portal
+        </button>
+    {% else %}
+        <button class="secondary no-print"
+                onclick="window.location.href='/dashboard'">
+            Back to Dashboard
+        </button>
+    {% endif %}
 </div>
 
 </body>

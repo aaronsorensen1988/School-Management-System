@@ -238,6 +238,9 @@ def test_parent_can_only_view_linked_student(setup):
         )
         s.add_all([jane_profile, john_profile])
         s.flush() 
+
+        jane_profile_id = jane_profile.id
+        john_profile_id = john_profile.id
         
         # 2. Link Pat to Jane's actual Student profile ID
         s.add(ParentStudent(parent_user_id=pat.id, student_id=jane_profile.id))
@@ -248,6 +251,27 @@ def test_parent_can_only_view_linked_student(setup):
 
     # 3. Log in as Pat
     _login(client, "pat", "pat-pw")
+
+    # Parent Portal links use the correct student account ID.
+    portal = client.get("/parent/portal")
+    assert portal.status_code == 200
+    assert f"/ui/student/{jane_profile.id}" in portal.text
+    assert f"/report-cards/{jane_id}" in portal.text
+    assert f"/report-cards/{john_id}" not in portal.text
+
+    # Parent cannot access an unrelated student's profile.
+    unlinked_profile = client.get(f"/ui/student/{john_profile_id}")
+    assert unlinked_profile.status_code == 403
+
+    # The child's profile returns to the Parent Portal.
+    profile = client.get(f"/ui/student/{jane_profile.id}")
+    assert profile.status_code == 200
+    assert "Back to Parent Portal" in profile.text
+
+    # The report card returns to the Parent Portal.
+    card = client.get(f"/report-cards/{jane_id}")
+    assert card.status_code == 200
+    assert "Back to Parent Portal" in card.text
 
     # 4. Check Jane's report card (Linked -> Should be 200 OK)
     r_jane = client.get(f"/report-cards/{jane_id}")

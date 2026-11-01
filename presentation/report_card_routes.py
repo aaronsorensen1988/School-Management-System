@@ -103,7 +103,7 @@ def report_cards_home(request: Request, db: Session = Depends(get_db)):
         if len(students) == 1:
             return RedirectResponse(f"/report-cards/{students[0]['id']}", status_code=302)
 
-    return _render(request, {"students": students})
+    return _render(request, {"students": students, "is_parent": actor.role == "Parent"})
 
 
 @router.get("/report-cards/{student_id}", response_class=HTMLResponse)
@@ -132,4 +132,5 @@ def report_card(student_id: int, request: Request, db: Session = Depends(get_db)
         "report": student_report(db, student.id),
         "generated_on": date.today().strftime("%B %d, %Y").replace(" 0", " "),
         "is_admin": actor.role == "Admin",
+        "is_parent": actor.role == "Parent",
     })

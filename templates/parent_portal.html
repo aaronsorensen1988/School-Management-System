@@ -33,9 +33,14 @@
                     View Records
                 </button>
                 <!-- Added View Report Card button -->
-                <button style="margin-left: 5px;" onclick="window.location.href='/report-cards/{{ child.id }}'">
+                {% if child.user_id %}
+                <button style="margin-left: 5px;"
+                        onclick="window.location.href='/report-cards/{{ child.user_id }}'">
                     Report Card
                 </button>
+                {% else %}
+                <span>Report card unavailable</span>
+                {% endif %}
             </td>
         </tr>
         {% else %}
