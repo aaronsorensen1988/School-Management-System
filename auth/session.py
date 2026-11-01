@@ -18,6 +18,10 @@ from database.parents import ParentStudent
 
 SESSION_USER_ID = "user_id"
 SESSION_USERNAME = "username"
+# Display only, for the "Signed in as" bar on every page. Never used for an
+# access decision: current_actor re-reads the role from the db each request
+# and refreshes this copy, so it can't drift.
+SESSION_ROLE_LABEL = "role_label"
 ENV_SECRET = "SMS_SESSION_SECRET"
 
 # How long a session lasts. Short because this is a school records system
@@ -87,6 +91,8 @@ def current_actor(request, db: Session) -> Actor:
 
     role = db.query(Role).filter(Role.id == user.role_id).first()
     role_name = role.name if role else None
+    if request.session.get(SESSION_ROLE_LABEL) != role_name:
+        request.session[SESSION_ROLE_LABEL] = role_name
 
     child_ids = ()
 

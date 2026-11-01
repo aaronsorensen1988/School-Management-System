@@ -350,9 +350,14 @@ def teacher_ui(request: Request, teacher_id: int, db: Session = Depends(get_db))
 # ---------------------------------------------------------
 # HOME PAGE
 # ---------------------------------------------------------
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {"request": request})
+@app.get("/")
+def home(request: Request, db: Session = Depends(get_db)):
+    # The site's front door: signed in goes to the dashboard, everyone else
+    # to the login page. current_actor also handles a deleted account.
+    actor = current_actor(request, db)
+    if actor.role is None:
+        return RedirectResponse("/login", status_code=302)
+    return RedirectResponse("/dashboard", status_code=302)
 
 # ---------------------------------------------------------
 # STUDENT UI PAGE

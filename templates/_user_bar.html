@@ -1,0 +1,10 @@
+{# Who's signed in, on every page after login. Reads the session directly so
+   no route has to pass anything in. Display only: access is still decided by
+   current_actor on the server. #}
+{% set _session = request.scope.get("session") or {} if request is defined else {} %}
+{% if _session.get("username") %}
+<div style="position:fixed; top:12px; right:16px; z-index:10; display:flex; align-items:center; gap:10px; background:#ffffff; border:1px solid #dddddd; border-radius:20px; padding:6px 14px; font-size:14px; box-shadow:0 2px 6px rgba(0,0,0,0.08);">
+    <span>Signed in as <strong>{{ _session.get("username") }}</strong>{% if _session.get("role_label") %} ({{ _session.get("role_label") }}){% endif %}</span>
+    <a href="/logout" style="color:#c62828; font-weight:bold; text-decoration:none;">Log out</a>
+</div>
+{% endif %}
