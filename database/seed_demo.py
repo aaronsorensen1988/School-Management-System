@@ -74,6 +74,15 @@ def get_or_create_student(
     )
 
     if existing:
+        if existing.user_id is None:
+            existing.user_id = user.id
+            db.flush()
+        elif existing.user_id != user.id:
+            raise RuntimeError(
+                f"Student {student_number} is linked to "
+                f"an unexpected user account."
+            )
+
         return existing
 
     student = Student(
