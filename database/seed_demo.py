@@ -10,6 +10,7 @@ from utils.security import hash_password
 
 
 DEMO_PASSWORD = "Demo123!"
+DEMO_CITY = "Rookhaven, Northvale"
 
 
 def get_roles(db):
@@ -66,7 +67,7 @@ def get_or_create_student(
     guardian_name,
     guardian_email,
 ):
-    """Create a student profile linked to a Student user account."""
+    """Create or update a student profile linked to a user account."""
     existing = (
         db.query(Student)
         .filter(Student.student_number == student_number)
@@ -76,12 +77,15 @@ def get_or_create_student(
     if existing:
         if existing.user_id is None:
             existing.user_id = user.id
-            db.flush()
         elif existing.user_id != user.id:
             raise RuntimeError(
                 f"Student {student_number} is linked to "
                 f"an unexpected user account."
             )
+
+        # Keep demo addresses consistent when rerunning the seed.
+        existing.home_address = home_address
+        db.flush()
 
         return existing
 
@@ -376,7 +380,7 @@ def seed_demo():
             last_name="Carter",
             grade_level=10,
             date_of_birth="2010-03-14",
-            home_address="1425 Maple Street, Omaha, NE",
+            home_address=f"1425 Maple Street, {DEMO_CITY}",
             guardian_name="Jordan Carter",
             guardian_email="jordan.carter@example.com",
         )
@@ -389,7 +393,7 @@ def seed_demo():
             last_name="Brooks",
             grade_level=10,
             date_of_birth="2010-07-22",
-            home_address="3812 Oak Avenue, Omaha, NE",
+            home_address=f"3812 Oak Avenue, {DEMO_CITY}",
             guardian_name="Dana Brooks",
             guardian_email="dana.brooks@example.com",
         )
@@ -402,7 +406,7 @@ def seed_demo():
             last_name="Patel",
             grade_level=10,
             date_of_birth="2010-01-09",
-            home_address="912 Willow Drive, Omaha, NE",
+            home_address=f"912 Willow Drive, {DEMO_CITY}",
             guardian_name="Priya Patel",
             guardian_email="priya.patel@example.com",
         )
@@ -415,7 +419,7 @@ def seed_demo():
             last_name="Patel",
             grade_level=11,
             date_of_birth="2009-05-18",
-            home_address="912 Willow Drive, Omaha, NE",
+            home_address=f"912 Willow Drive, {DEMO_CITY}",
             guardian_name="Priya Patel",
             guardian_email="priya.patel@example.com",
         )
@@ -428,7 +432,7 @@ def seed_demo():
             last_name="Chen",
             grade_level=11,
             date_of_birth="2009-10-02",
-            home_address="2741 Pine Street, Omaha, NE",
+            home_address=f"2741 Pine Street, {DEMO_CITY}",
             guardian_name="Linda Chen",
             guardian_email="linda.chen@example.com",
         )
@@ -441,7 +445,7 @@ def seed_demo():
             last_name="Johnson",
             grade_level=11,
             date_of_birth="2009-12-11",
-            home_address="5608 Cedar Lane, Omaha, NE",
+            home_address=f"5608 Cedar Lane, {DEMO_CITY}",
             guardian_name="Robert Johnson",
             guardian_email="robert.johnson@example.com",
         )
@@ -569,6 +573,7 @@ def seed_demo():
         print()
         print("=" * 60)
         print("SANS Academy demo data seeded successfully.")
+        print(f"Location: {DEMO_CITY}")
         print("=" * 60)
         print()
         print(f"Demo password for all accounts: {DEMO_PASSWORD}")
