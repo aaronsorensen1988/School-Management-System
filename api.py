@@ -211,7 +211,14 @@ def parent_portal(request: Request, db: Session = Depends(get_db)):
     repo.record_parent_disclosure(actor, children)
 
     rows = [
-        redact(StudentService._to_dict(s), actor, student_user_id=s.user_id)
+        {
+            **redact(
+                StudentService._to_dict(s),
+                actor,
+                student_user_id=s.user_id
+            ),
+            "user_id": s.user_id
+        }
         for s in children
     ]
     
@@ -391,7 +398,7 @@ def student_ui(request: Request, student_id: str, db: Session = Depends(get_db))
         StudentService._to_dict(student), actor, student_user_id=student.user_id
     )
     return templates.TemplateResponse(
-        request, "student_profile.html", {"request": request, "student": data}
+        request, "student_profile.html", {"request": request, "student": data, "actor": actor}
     )
 
 
