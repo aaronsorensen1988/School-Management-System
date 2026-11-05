@@ -2,13 +2,35 @@
 <html lang="en">
 <head>
     <title>Conversation</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body { height: auto; min-height: 100vh; padding: 30px 0; }
+        .login-container { width: 900px; max-width: 95%; text-align: left; }
+        .login-container h1, .login-container h2 { text-align: center; }
+        .login-container h1 { font-size: 1.6em; margin-top: 0; }
+        .login-container h2 { font-size: 1.2em; }
+        .privacy { font-size: 0.9em; color: #555; background-color: #eee; padding: 10px; border-radius: 5px; }
+        ul.list { list-style: none; padding: 0; }
+        ul.list li { border: 1px solid #ddd; border-radius: 6px; padding: 10px 14px; margin: 8px 0; }
+        ul.list li a { font-weight: bold; color: #2e7d32; }
+        ul.list li em { color: #666; font-size: 0.9em; }
+        .subtitle { text-align: center; color: #666; margin-top: -6px; }
+        .meta { color: #666; font-size: 0.85em; margin-left: 6px; }
+        .msg-body { margin: 6px 0 0; white-space: pre-wrap; }
+        .none { color: #888; font-style: italic; text-align: center; }
+        hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+        form textarea { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; font-family: inherit; }
+        form button { margin-top: 8px; }
+        .secondary { background-color: #777; }
+    </style>
 </head>
 <body>
 {% include "_user_bar.html" %}
+<div class="login-container">
     <h1>{{ other_user.first_name }} {{ other_user.last_name }}</h1>
-    <p>About {{ student.first_name }} {{ student.last_name }}</p>
+    <p class="subtitle">About {{ student.first_name }} {{ student.last_name }}</p>
 
-    <p style="font-size: 0.9em; color: #555; background-color: #eee; padding: 10px; border-radius: 5px;">
+    <p class="privacy">
         <strong>Privacy Notice:</strong> This conversation may contain academic and attendance information about a student, which is protected by FERPA. Please keep it confidential and log out when you are finished. Messages cannot be edited or deleted once sent, and the school records who sent each one and when.
     </p>
 
@@ -18,15 +40,15 @@
 
     <hr>
 
-    <ul>
+    <ul class="list">
         {% for message in messages %}
             <li>
                 <strong>{{ 'You' if message.sender_id == me else other_user.first_name }}</strong>
-                <em>{{ message.sent_at.strftime('%b %d, %Y %I:%M %p') }}</em>
-                <p>{{ message.body }}</p>
+                <em class="meta">{{ message.sent_at.strftime('%b %d, %Y %I:%M %p') }}</em>
+                <p class="msg-body">{{ message.body }}</p>
             </li>
         {% else %}
-            <p>Nothing here yet. Send the first message.</p>
+            <p class="none">Nothing here yet. Send the first message.</p>
         {% endfor %}
     </ul>
 
@@ -34,8 +56,7 @@
 
     {% if can_send %}
         <form method="post" action="/messages/{{ other_user.id }}/{{ student.id }}">
-            <textarea name="body" rows="4" cols="60" required></textarea>
-            <br>
+            <textarea name="body" rows="4" required></textarea>
             <button type="submit">Send</button>
         </form>
     {% else %}
@@ -43,6 +64,7 @@
     {% endif %}
 
     <hr>
-    <button onclick="window.location.href='/messages'">Back to Messages</button>
+    <button class="secondary" onclick="window.location.href='/messages'">Back to Messages</button>
+</div>
 </body>
 </html>
