@@ -7,6 +7,7 @@
     <style>
         .login-container { width: 420px; text-align: left; }
         .login-container h2 { text-align: center; }
+        .hidden-field { color: #888; font-style: italic; }
     </style>
 </head>
 <body>
@@ -17,10 +18,10 @@
         <h2>{{ student.name }}</h2>
         <p><strong>Student ID:</strong> {{ student.student_number }}</p>
         <p><strong>Grade:</strong> {{ student.grade }}</p>
-        <p><strong>Date of birth:</strong> {{ student.date_of_birth }}</p>
-        <p><strong>Home address:</strong> {{ student.home_address }}</p>
-        <p><strong>Parent/guardian:</strong> {{ student.guardian_name }}</p>
-        <p><strong>Parent/guardian email:</strong> {{ student.guardian_email }}</p>
+        <p><strong>Date of birth:</strong> {% if student.date_of_birth is not none %}{{ student.date_of_birth }}{% else %}<span class="hidden-field">Hidden for privacy</span>{% endif %}</p>
+        <p><strong>Home address:</strong> {% if student.home_address is not none %}{{ student.home_address }}{% else %}<span class="hidden-field">Hidden for privacy</span>{% endif %}</p>
+        <p><strong>Parent/guardian:</strong> {% if student.guardian_name is not none %}{{ student.guardian_name }}{% else %}<span class="hidden-field">Hidden for privacy</span>{% endif %}</p>
+        <p><strong>Parent/guardian email:</strong> {% if student.guardian_email is not none %}{{ student.guardian_email }}{% else %}<span class="hidden-field">Hidden for privacy</span>{% endif %}</p>
     {% elif error %}
         <h2>Access denied</h2>
         <p>{{ error }}</p>
